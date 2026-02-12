@@ -1,57 +1,81 @@
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Link, Tabs } from 'expo-router';
-import { Pressable } from 'react-native';
-
-import Colors from '@/constants/Colors';
-import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+import { Tabs } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { View } from 'react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        // Disable the static render of the header on web
-        // to prevent a hydration error in React Navigation v6.
-        headerShown: useClientOnlyValue(false, true),
-      }}>
+        tabBarActiveTintColor: '#6b8e23', // Verde oliva da foto
+        tabBarInactiveTintColor: '#8e8e8e',
+        headerShown: false,
+        tabBarStyle: {
+          height: 60,
+          paddingBottom: 5,
+        },
+      }}
+    >
+      {/* 1. INÍCIO (Onde estava 'home') */}
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
-          headerRight: () => (
-            <Link href="/modal" asChild>
-              <Pressable>
-                {({ pressed }) => (
-                  <FontAwesome
-                    name="info-circle"
-                    size={25}
-                    color={Colors[colorScheme ?? 'light'].text}
-                    style={{ marginRight: 15, opacity: pressed ? 0.5 : 1 }}
-                  />
-                )}
-              </Pressable>
-            </Link>
+          title: 'Início',
+          tabBarIcon: ({ color }) => <Ionicons name="home-outline" size={24} color={color} />,
+        }}
+      />
+
+      {/* 2. AGENDA */}
+      <Tabs.Screen
+        name="agenda"
+        options={{
+          title: 'Agenda',
+          tabBarIcon: ({ color }) => <Ionicons name="calendar-outline" size={24} color={color} />,
+        }}
+      />
+
+      {/* 3. BOTÃO CENTRAL (+) */}
+      <Tabs.Screen
+        name="adicionar"
+        options={{
+          title: '',
+          tabBarIcon: () => (
+            <View style={{
+              backgroundColor: '#6b8e23',
+              width: 50,
+              height: 50,
+              borderRadius: 25,
+              justifyContent: 'center',
+              alignSelf: 'center',
+              alignItems: 'center',
+              marginBottom: 10, // Para dar o efeito de saltado da foto
+              elevation: 5,    // Sombra no Android
+              shadowColor: '#000', // Sombra no iOS
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.3,
+              shadowRadius: 2,
+            }}>
+              <Ionicons name="add" size={35} color="white" />
+            </View>
           ),
         }}
       />
+
+      {/* 4. PERFIL */}
       <Tabs.Screen
-        name="two"
+        name="perfil"
         options={{
-          title: 'Tab Two',
-          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+          title: 'Perfil',
+          tabBarIcon: ({ color }) => <Ionicons name="person-outline" size={24} color={color} />,
+        }}
+      />
+
+      {/* 5. CONFIGURAÇÕES */}
+      <Tabs.Screen
+        name="config"
+        options={{
+          title: 'Config',
+          tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={24} color={color} />,
         }}
       />
     </Tabs>

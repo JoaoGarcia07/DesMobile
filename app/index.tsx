@@ -17,7 +17,7 @@ export default function LoginScreen() {
       });
   
       if (response.data.auth) {
-        router.replace('/(tabs)/home'); 
+        router.replace('/(tabs)');
       }
     } catch (error: any) {
       // O ": any" avisa ao TypeScript para não reclamar
