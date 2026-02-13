@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, Image } from 'react-native';
-import axios from 'axios';
+import { 
+  View, Text, TextInput, StyleSheet, TouchableOpacity, 
+  ImageBackground, Alert, KeyboardAvoidingView, Platform 
+} from 'react-native';
 import { useRouter } from 'expo-router';
+import axios from 'axios';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -9,71 +13,137 @@ export default function LoginScreen() {
   const router = useRouter();
 
   const handleLogin = async () => {
+    if (!email || !senha) {
+      Alert.alert("Erro", "Por favor, preencha todos os campos.");
+      return;
+    }
+
     try {
+      // Lembra de conferir se seu IP continua 192.168.100.90
       const response = await axios.post('http://192.168.100.90:3000/login', {
-        // O .trim() remove espaços e o .toLowerCase() deixa tudo minúsculo
-        email: email.trim().toLowerCase(), 
+        email: email.trim().toLowerCase(),
         senha: senha.trim()
       });
-  
+
       if (response.data.auth) {
         router.replace('/(tabs)');
       }
     } catch (error: any) {
-      // O ": any" avisa ao TypeScript para não reclamar
-      const mensagemErro = error.response?.data?.message || "Erro desconhecido";
-      console.log("Detalhes do erro no servidor:", mensagemErro);
-      
-      Alert.alert("Erro", "Acesso negado. Verifique e-mail e senha.");
-  }
+      const msg = error.response?.data?.message || "Erro ao conectar com o servidor.";
+      Alert.alert("Acesso Negado", msg);
+    }
   };
+
   return (
-    <View style={styles.container}>
-      {/* Aqui você pode colocar o logo depois */}
-      <View style={styles.logoCircle}>
-         <Text style={styles.logoText}>D</Text>
+    <ImageBackground 
+      source={{ uri: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000' }} 
+      style={styles.background}
+    >
+      <View style={styles.overlay}>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.container}
+        >
+          {/* LOGO E TÍTULO */}
+          <View style={styles.header}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="shield-checkmark" size={60} color="white" />
+            </View>
+            <Text style={styles.title}>Desbravadores</Text>
+            <Text style={styles.subtitle}>Painel do Desbravador</Text>
+          </View>
+
+          {/* FORMULÁRIO */}
+          <View style={styles.form}>
+            <View style={styles.inputContainer}>
+              <Ionicons name="mail-outline" size={20} color="#6b8e23" style={styles.inputIcon} />
+              <TextInput 
+                style={styles.input}
+                placeholder="E-mail"
+                placeholderTextColor="#999"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Ionicons name="lock-closed-outline" size={20} color="#6b8e23" style={styles.inputIcon} />
+              <TextInput 
+                style={styles.input}
+                placeholder="Senha"
+                placeholderTextColor="#999"
+                value={senha}
+                onChangeText={setSenha}
+                secureTextEntry
+              />
+            </View>
+
+            <TouchableOpacity style={styles.forgotPass}>
+              <Text style={styles.forgotPassText}>Esqueceu a senha?</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.button} onPress={handleLogin}>
+              <Text style={styles.buttonText}>ENTRAR</Text>
+              <Ionicons name="arrow-forward" size={20} color="white" />
+            </TouchableOpacity>
+          </View>
+
+          {/* RODAPÉ */}
+          <TouchableOpacity style={styles.footer}>
+            <Text style={styles.footerText}>
+              Não tem uma conta? <Text style={styles.footerLink}>Cadastre-se</Text>
+            </Text>
+          </TouchableOpacity>
+        </KeyboardAvoidingView>
       </View>
-
-      <Text style={styles.welcomeText}>Bem-vindo, Desbravador!</Text>
-
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#999"
-          onChangeText={setEmail}
-          value={email}
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Senha"
-          placeholderTextColor="#999"
-          secureTextEntry
-          onChangeText={setSenha}
-          value={senha}
-        />
-      </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleLogin}>
-        <Text style={styles.buttonText}>ENTRAR</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity>
-        <Text style={styles.forgotText}>Esqueceu a senha?</Text>
-      </TouchableOpacity>
-    </View>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#002a52', alignItems: 'center', justifyContent: 'center', padding: 30 },
-  logoCircle: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#fff', justifyContent: 'center', alignItems: 'center', marginBottom: 20 },
-  logoText: { fontSize: 50, fontWeight: 'bold', color: '#002a52' },
-  welcomeText: { fontSize: 22, color: '#fff', fontWeight: 'bold', marginBottom: 30 },
-  inputContainer: { width: '100%', marginBottom: 20 },
-  input: { width: '100%', backgroundColor: '#fff', padding: 15, borderRadius: 5, marginBottom: 15, fontSize: 16 },
-  button: { width: '100%', backgroundColor: '#ffcc00', padding: 15, borderRadius: 5, alignItems: 'center', elevation: 3 },
-  buttonText: { color: '#002a52', fontWeight: 'bold', fontSize: 18 },
-  forgotText: { color: '#fff', marginTop: 20, textDecorationLine: 'underline' }
+  background: { flex: 1, width: '100%' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center' },
+  container: { paddingHorizontal: 30 },
+  header: { alignItems: 'center', marginBottom: 50 },
+  logoCircle: { 
+    width: 100, 
+    height: 100, 
+    borderRadius: 50, 
+    backgroundColor: 'rgba(107, 142, 35, 0.9)', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    marginBottom: 15,
+    borderWidth: 2,
+    borderColor: 'white'
+  },
+  title: { fontSize: 32, fontWeight: 'bold', color: 'white', letterSpacing: 1 },
+  subtitle: { fontSize: 16, color: 'rgba(255,255,255,0.8)', marginTop: 5 },
+  form: { backgroundColor: 'white', padding: 25, borderRadius: 20, elevation: 10 },
+  inputContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#F5F5F5', 
+    borderRadius: 12, 
+    marginBottom: 15,
+    paddingHorizontal: 15
+  },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, height: 50, color: '#333', fontSize: 16 },
+  forgotPass: { alignSelf: 'flex-end', marginBottom: 20 },
+  forgotPassText: { color: '#666', fontSize: 14 },
+  button: { 
+    backgroundColor: '#6b8e23', 
+    height: 55, 
+    borderRadius: 12, 
+    flexDirection: 'row',
+    justifyContent: 'center', 
+    alignItems: 'center',
+    elevation: 3
+  },
+  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold', marginRight: 10 },
+  footer: { marginTop: 30, alignItems: 'center' },
+  footerText: { color: 'white', fontSize: 14 },
+  footerLink: { fontWeight: 'bold', textDecorationLine: 'underline' }
 });

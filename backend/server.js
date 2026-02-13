@@ -1,70 +1,76 @@
 const express = require('express');
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const sqlite3 = require('sqlite3').verbose();
 const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 
-const SECRET_KEY = "chave_mestra_desbravadores";
+// Conecta ao banco de dados (cria o arquivo se não existir)
+const db = new sqlite3.Database('./database.db');
 
-let db;
-(async () => {
-    // Cria o banco de dados automaticamente na pasta backend
-    db = await open({
-        filename: './database.db',
-        driver: sqlite3.Database
-    });
-
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nome TEXT,
-            email TEXT UNIQUE,
-            senha TEXT
-        )
-    `);
-    console.log("✅ Banco de Dados SQLite pronto para o combate!");
-})();
-
-// CÓDIGO TEMPORÁRIO PARA CRIAR O USUÁRIO JOÃO
-setTimeout(async () => {
-    const senhaHash = await bcrypt.hash('123', 10);
-    try {
-        await db.run('INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)', ['Joao', 'joao@teste.com', senhaHash]);
-        console.log("👤 Usuário de teste criado com sucesso!");
-    } catch (e) {
-        console.log("ℹ️ Usuário já existe ou erro ao criar.");
-    }
-}, 2000);
-
-// ROTA PARA CADASTRAR (Criei essa para você usar agora)
-app.post('/register', async (req, res) => {
-    const { nome, email, senha } = req.body;
-    const senhaHash = await bcrypt.hash(senha, 10);
-    try {
-        await db.run('INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)', [nome, email, senhaHash]);
-        res.json({ success: true, message: "Usuário criado!" });
-    } catch (e) {
-        res.status(400).json({ message: "Erro: E-mail já existe." });
-    }
+db.serialize(() => {
+    // 1. Cria a tabela de usuários
+    db.run("CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, email TEXT, senha TEXT)");
+    
+    // 2. Cria a tabela da agenda
+    db.run(`CREATE TABLE IF NOT EXISTS agenda (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        titulo TEXT,
+        descricao TEXT,
+        data TEXT,
+        hora TEXT
+    )`);
+    
+    // 3. INSERE O USUÁRIO DE TESTE
+    // Usamos INSERT OR IGNORE para não dar erro de "ID duplicado" toda vez que você reiniciar o server
+    db.run("INSERT OR IGNORE INTO usuarios (id, nome, email, senha) VALUES (1, 'Joao', 'joao@teste.com', '123')");
+    
+    console.log("✅ Banco de dados e tabelas prontos.");
+    console.log("👤 Usuário padrão: joao@teste.com | Senha: 123");
 });
 
-// ROTA PARA LOGIN (O que o seu App vai usar)
-app.post('/login', async (req, res) => {
+// --- ROTA DE LOGIN ---
+app.post('/login', (req, res) => {
     const { email, senha } = req.body;
-    const user = await db.get('SELECT * FROM usuarios WHERE email = ?', [email]);
+    console.log(`Tentativa de login: ${email}`);
 
-    if (user && await bcrypt.compare(senha, user.senha)) {
-        const token = jwt.sign({ id: user.id }, SECRET_KEY, { expiresIn: '1h' });
-        res.json({ auth: true, token, nome: user.nome });
-    } else {
-        res.status(401).json({ message: "E-mail ou senha inválidos" });
-    }
+    db.get("SELECT * FROM usuarios WHERE email = ? AND senha = ?", [email, senha], (err, row) => {
+        if (err) {
+            return res.status(500).json({ error: "Erro no servidor" });
+        }
+        if (row) {
+            // Enviamos 'auth: true' porque é isso que o seu front-end checa na imagem 7b743a
+            res.json({ auth: true, user: row });
+        } else {
+            res.status(401).json({ auth: false, message: "Acesso negado. Verifique e-mail e senha." });
+        }
+    });
 });
 
+// --- ROTAS DA AGENDA ---
+
+// Listar eventos
+app.get('/agenda', (req, res) => {
+    db.all("SELECT * FROM agenda ORDER BY data ASC", [], (err, rows) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(rows);
+    });
+});
+
+// Cadastrar na agenda
+app.post('/agenda', (req, res) => {
+    const { titulo, descricao, data, hora } = req.body;
+    db.run("INSERT INTO agenda (titulo, descricao, data, hora) VALUES (?, ?, ?, ?)", 
+    [titulo, descricao, data, hora], function(err) {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json({ id: this.lastID });
+    });
+});
+
+// Inicia o servidor em todas as interfaces de rede para o celular acessar
 const PORT = 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor rodando em http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
+    console.log(`📡 Para o celular, use o IP que você viu no ipconfig:3000`);
+});
