@@ -4,73 +4,65 @@ const cors = require('cors');
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(cors()); // Essencial para evitar erros de bloqueio no navegador
 
-// Conecta ao banco de dados (cria o arquivo se não existir)
 const db = new sqlite3.Database('./database.db');
 
 db.serialize(() => {
-    // 1. Cria a tabela de usuários
     db.run("CREATE TABLE IF NOT EXISTS usuarios (id INTEGER PRIMARY KEY AUTOINCREMENT, nome TEXT, email TEXT, senha TEXT)");
-    
-    // 2. Cria a tabela da agenda
-    db.run(`CREATE TABLE IF NOT EXISTS agenda (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        titulo TEXT,
-        descricao TEXT,
-        data TEXT,
-        hora TEXT
-    )`);
-    
-    // 3. INSERE O USUÁRIO DE TESTE
-    // Usamos INSERT OR IGNORE para não dar erro de "ID duplicado" toda vez que você reiniciar o server
-    db.run("INSERT OR IGNORE INTO usuarios (id, nome, email, senha) VALUES (1, 'Joao', 'joao@teste.com', '123')");
-    
-    console.log("✅ Banco de dados e tabelas prontos.");
-    console.log("👤 Usuário padrão: joao@teste.com | Senha: 123");
+    db.run("CREATE TABLE IF NOT EXISTS agenda (id INTEGER PRIMARY KEY AUTOINCREMENT, titulo TEXT, descricao TEXT, data TEXT, hora TEXT)");
+    console.log("✅ Banco de dados pronto.");
 });
 
-// --- ROTA DE LOGIN ---
+// --- NOVAS ROTAS PARA A HOME ---
+
+// ROTA PARA BUSCAR DADOS DA HOME (DINÂMICO)
+app.get('/api/home', (req, res) => {
+    // Aqui você pode buscar dados reais do banco. 
+    // Por enquanto, enviamos um JSON para preencher sua tela principal.
+    res.json({
+        unidade: "Unidade Águia",
+        desbravador: "João",
+        atividadesPendentes: 3
+    });
+});
+
+// --- ROTAS EXISTENTES ---
+
+// LOGIN
 app.post('/login', (req, res) => {
     const { email, senha } = req.body;
-    console.log(`Tentativa de login: ${email}`);
-
     db.get("SELECT * FROM usuarios WHERE email = ? AND senha = ?", [email, senha], (err, row) => {
-        if (err) {
-            return res.status(500).json({ error: "Erro no servidor" });
-        }
         if (row) {
-            // Enviamos 'auth: true' porque é isso que o seu front-end checa na imagem 7b743a
+            console.log(`🔑 Login realizado: ${email}`);
             res.json({ auth: true, user: row });
         } else {
-            res.status(401).json({ auth: false, message: "Acesso negado. Verifique e-mail e senha." });
+            res.status(401).json({ auth: false, message: "Acesso negado." });
         }
     });
 });
 
-// --- ROTAS DA AGENDA ---
+// CADASTRO DE USUÁRIO
+app.post('/usuarios', (req, res) => {
+    const { nome, email, senha } = req.body;
+    db.run("INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)", [nome, email, senha], function(err) {
+        if (err) return res.status(500).json({ message: "Erro ao cadastrar." });
+        console.log(`👤 Novo usuário cadastrado: ${email}`);
+        res.status(201).json({ success: true });
+    });
+});
 
-// Listar eventos
+// LISTAR AGENDA
 app.get('/agenda', (req, res) => {
-    db.all("SELECT * FROM agenda ORDER BY data ASC", [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
+    db.all("SELECT * FROM agenda ORDER BY data ASC", (err, rows) => {
+        res.json(rows || []);
     });
 });
 
-// Cadastrar na agenda
-app.post('/agenda', (req, res) => {
-    const { titulo, descricao, data, hora } = req.body;
-    db.run("INSERT INTO agenda (titulo, descricao, data, hora) VALUES (?, ?, ?, ?)", 
-    [titulo, descricao, data, hora], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json({ id: this.lastID });
-    });
-});
-
-// Inicia o servidor em todas as interfaces de rede para o celular acessar
+// CONFIGURAÇÃO DA PORTA E IP
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor rodando em http://localhost:${PORT}`);
-    console.log(`📡 Para o celular, use o IP que você viu no ipconfig:3000`);
+    // IP atualizado conforme seu ipconfig
+    console.log(`🚀 Servidor rodando em: http://192.168.100.85:${PORT}`);
+    console.log(`📱 Para testar no celular ou navegador, use o IP: 192.168.100.85`);
 });
