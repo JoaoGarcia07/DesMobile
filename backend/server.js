@@ -16,10 +16,7 @@ db.serialize(() => {
 
 // --- NOVAS ROTAS PARA A HOME ---
 
-// ROTA PARA BUSCAR DADOS DA HOME (DINÂMICO)
 app.get('/api/home', (req, res) => {
-    // Aqui você pode buscar dados reais do banco. 
-    // Por enquanto, enviamos um JSON para preencher sua tela principal.
     res.json({
         unidade: "Unidade Águia",
         desbravador: "João",
@@ -27,9 +24,19 @@ app.get('/api/home', (req, res) => {
     });
 });
 
+// --- ROTA DE RECUPERAÇÃO DE SENHA ---
+
+app.post('/recuperar-senha', (req, res) => {
+    const { email } = req.body;
+    console.log(`📩 Pedido de recuperação recebido para: ${email}`);
+    
+    // Aqui no futuro você integrará com um serviço de e-mail (Nodemailer, etc)
+    // Por enquanto, apenas confirmamos o recebimento
+    res.json({ success: true, message: "Pedido recebido pelo servidor." });
+});
+
 // --- ROTAS EXISTENTES ---
 
-// LOGIN
 app.post('/login', (req, res) => {
     const { email, senha } = req.body;
     db.get("SELECT * FROM usuarios WHERE email = ? AND senha = ?", [email, senha], (err, row) => {
@@ -42,7 +49,6 @@ app.post('/login', (req, res) => {
     });
 });
 
-// CADASTRO DE USUÁRIO
 app.post('/usuarios', (req, res) => {
     const { nome, email, senha } = req.body;
     db.run("INSERT INTO usuarios (nome, email, senha) VALUES (?, ?, ?)", [nome, email, senha], function(err) {
@@ -52,7 +58,6 @@ app.post('/usuarios', (req, res) => {
     });
 });
 
-// LISTAR AGENDA
 app.get('/agenda', (req, res) => {
     db.all("SELECT * FROM agenda ORDER BY data ASC", (err, rows) => {
         res.json(rows || []);
@@ -62,7 +67,6 @@ app.get('/agenda', (req, res) => {
 // CONFIGURAÇÃO DA PORTA E IP
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
-    // IP atualizado conforme seu ipconfig
     console.log(`🚀 Servidor rodando em: http://192.168.100.85:${PORT}`);
     console.log(`📱 Para testar no celular ou navegador, use o IP: 192.168.100.85`);
 });

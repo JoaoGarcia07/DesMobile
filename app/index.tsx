@@ -35,7 +35,7 @@ export default function LoginScreen() {
 
   return (
     <ImageBackground 
-        source={{ uri: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000' }} 
+      source={{ uri: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&q=80&w=1000' }} 
       style={styles.background}
     >
       <View style={styles.overlay}>
@@ -70,7 +70,11 @@ export default function LoginScreen() {
             />
           </View>
 
-          <TouchableOpacity style={styles.forgotPass}>
+          {/* BOTÃO ATUALIZADO PARA NAVEGAR */}
+          <TouchableOpacity 
+            style={styles.forgotPass} 
+            onPress={() => router.push('/recuperar')}
+          >
             <Text style={styles.forgotText}>Esqueceu a senha?</Text>
           </TouchableOpacity>
 
