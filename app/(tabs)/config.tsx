@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../_layout'; // Importação crucial
+import { useRouter } from 'expo-router'; // Importação para navegação
+import { useTheme } from '../_layout'; 
 
 export default function ConfigScreen() {
+  const router = useRouter();
   const [notificacoes, setNotificacoes] = useState(true);
   const { isDarkMode, toggleTheme } = useTheme();
 
@@ -19,12 +21,15 @@ export default function ConfigScreen() {
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}>
       <Text style={[styles.header, { color: theme.text }]}>Configurações</Text>
 
+      {/* Seção: Conta */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Conta</Text>
         <ConfigItem isDarkMode={isDarkMode} icon="person-outline" label="Editar Perfil" />
         <ConfigItem isDarkMode={isDarkMode} icon="lock-closed-outline" label="Alterar Senha" />
+        <ConfigItem isDarkMode={isDarkMode} icon="shield-checkmark-outline" label="Privacidade" />
       </View>
 
+      {/* Seção: Preferências */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Preferências</Text>
         
@@ -33,23 +38,47 @@ export default function ConfigScreen() {
             <Ionicons name="notifications-outline" size={22} color="#6b8e23" />
             <Text style={[styles.itemText, { color: theme.text }]}>Notificações</Text>
           </View>
-          <Switch value={notificacoes} onValueChange={setNotificacoes} trackColor={{ false: "#767577", true: "#6b8e23" }} />
+          <Switch 
+            value={notificacoes} 
+            onValueChange={setNotificacoes} 
+            trackColor={{ false: "#767577", true: "#6b8e23" }} 
+          />
         </View>
 
-        {/* INTERRUPTOR DO MODO ESCURO CONECTADO AO LAYOUT */}
         <View style={[styles.itemRow, { backgroundColor: theme.card }]}>
           <View style={styles.iconLabel}>
             <Ionicons name="moon-outline" size={22} color="#6b8e23" />
             <Text style={[styles.itemText, { color: theme.text }]}>Modo Escuro</Text>
           </View>
-          <Switch value={isDarkMode} onValueChange={toggleTheme} trackColor={{ false: "#767577", true: "#6b8e23" }} />
+          <Switch 
+            value={isDarkMode} 
+            onValueChange={toggleTheme} 
+            trackColor={{ false: "#767577", true: "#6b8e23" }} 
+          />
         </View>
       </View>
 
+      {/* Seção: Suporte */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Suporte</Text>
-        <ConfigItem isDarkMode={isDarkMode} icon="help-circle-outline" label="Central de Ajuda" />
-        <ConfigItem isDarkMode={isDarkMode} icon="information-circle-outline" label="Sobre o App" />
+        
+        {/* Navegação para a Central de Ajuda profissional */}
+        <ConfigItem 
+          isDarkMode={isDarkMode} 
+          icon="help-circle-outline" 
+          label="Central de Ajuda" 
+          onPress={() => router.push("/ajuda" as any)} 
+        />
+
+        <ConfigItem isDarkMode={isDarkMode} icon="document-text-outline" label="Termos de Uso" />
+        
+        {/* Navegação para o Sobre o App profissional */}
+        <ConfigItem 
+          isDarkMode={isDarkMode} 
+          icon="information-circle-outline" 
+          label="Sobre o App" 
+          onPress={() => router.push("/sobre" as any)} 
+        />
       </View>
 
       <Text style={styles.version}>Versão 1.0.0</Text>
@@ -57,12 +86,17 @@ export default function ConfigScreen() {
   );
 }
 
-function ConfigItem({ icon, label, isDarkMode }: any) {
+// Componente para itens clicáveis ajustado
+function ConfigItem({ icon, label, isDarkMode, onPress }: any) {
   const cardColor = isDarkMode ? '#1E1E1E' : '#FFFFFF';
   const textColor = isDarkMode ? '#FFFFFF' : '#333333';
 
   return (
-    <TouchableOpacity style={[styles.itemRow, { backgroundColor: cardColor }]}>
+    <TouchableOpacity 
+      style={[styles.itemRow, { backgroundColor: cardColor }]} 
+      onPress={onPress}
+      activeOpacity={0.7}
+    >
       <View style={styles.iconLabel}>
         <Ionicons name={icon} size={22} color="#6b8e23" />
         <Text style={[styles.itemText, { color: textColor }]}>{label}</Text>

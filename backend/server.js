@@ -67,6 +67,6 @@ app.get('/agenda', (req, res) => {
 // CONFIGURAÇÃO DA PORTA E IP
 const PORT = 3000;
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor rodando em: http://192.168.100.85:${PORT}`);
-    console.log(`📱 Para testar no celular ou navegador, use o IP: 192.168.100.85`);
+    console.log(`🚀 Servidor rodando em: http://192.168.100.82:${PORT}`);
+    console.log(`📱 Para testar no celular ou navegador, use o IP: 192.168.100.82`);
 });
