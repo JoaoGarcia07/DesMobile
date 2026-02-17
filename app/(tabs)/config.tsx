@@ -26,7 +26,14 @@ export default function ConfigScreen() {
         <Text style={styles.sectionTitle}>Conta</Text>
         <ConfigItem isDarkMode={isDarkMode} icon="person-outline" label="Editar Perfil" />
         <ConfigItem isDarkMode={isDarkMode} icon="lock-closed-outline" label="Alterar Senha" />
-        <ConfigItem isDarkMode={isDarkMode} icon="shield-checkmark-outline" label="Privacidade" />
+        
+        {/* Agora aponta para a nova tela profissional de Privacidade */}
+        <ConfigItem 
+          isDarkMode={isDarkMode} 
+          icon="shield-checkmark-outline" 
+          label="Privacidade" 
+          onPress={() => router.push("/privacidade" as any)} 
+        />
       </View>
 
       {/* Seção: Preferências */}
@@ -58,7 +65,7 @@ export default function ConfigScreen() {
         </View>
       </View>
 
-      {/* Seção: Suporte - Todas as telas profissionais conectadas */}
+      {/* Seção: Suporte - Todas as rotas conectadas */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Suporte</Text>
         
