@@ -25,7 +25,6 @@ export default function ConfigScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Conta</Text>
         
-        {/* Agora aponta para a nova tela de Editar Perfil */}
         <ConfigItem 
           isDarkMode={isDarkMode} 
           icon="person-outline" 
@@ -33,7 +32,13 @@ export default function ConfigScreen() {
           onPress={() => router.push("/editar-perfil" as any)} 
         />
 
-        <ConfigItem isDarkMode={isDarkMode} icon="lock-closed-outline" label="Alterar Senha" />
+        {/* Agora conectado à tela de Alterar Senha corrigida */}
+        <ConfigItem 
+          isDarkMode={isDarkMode} 
+          icon="lock-closed-outline" 
+          label="Alterar Senha" 
+          onPress={() => router.push("/alterar-senha" as any)} 
+        />
         
         <ConfigItem 
           isDarkMode={isDarkMode} 
