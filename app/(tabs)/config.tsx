@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // Importação para navegação
+import { useRouter } from 'expo-router'; 
 import { useTheme } from '../_layout'; 
 
 export default function ConfigScreen() {
@@ -9,7 +9,7 @@ export default function ConfigScreen() {
   const [notificacoes, setNotificacoes] = useState(true);
   const { isDarkMode, toggleTheme } = useTheme();
 
-  // Cores dinâmicas baseadas no tema
+  // Cores dinâmicas baseadas no tema global
   const theme = {
     bg: isDarkMode ? '#121212' : '#F8F9FA',
     card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
@@ -58,11 +58,10 @@ export default function ConfigScreen() {
         </View>
       </View>
 
-      {/* Seção: Suporte */}
+      {/* Seção: Suporte - Todas as telas profissionais conectadas */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Suporte</Text>
         
-        {/* Navegação para a Central de Ajuda profissional */}
         <ConfigItem 
           isDarkMode={isDarkMode} 
           icon="help-circle-outline" 
@@ -70,9 +69,13 @@ export default function ConfigScreen() {
           onPress={() => router.push("/ajuda" as any)} 
         />
 
-        <ConfigItem isDarkMode={isDarkMode} icon="document-text-outline" label="Termos de Uso" />
+        <ConfigItem 
+          isDarkMode={isDarkMode} 
+          icon="document-text-outline" 
+          label="Termos de Uso" 
+          onPress={() => router.push("/termos" as any)}
+        />
         
-        {/* Navegação para o Sobre o App profissional */}
         <ConfigItem 
           isDarkMode={isDarkMode} 
           icon="information-circle-outline" 
@@ -86,7 +89,6 @@ export default function ConfigScreen() {
   );
 }
 
-// Componente para itens clicáveis ajustado
 function ConfigItem({ icon, label, isDarkMode, onPress }: any) {
   const cardColor = isDarkMode ? '#1E1E1E' : '#FFFFFF';
   const textColor = isDarkMode ? '#FFFFFF' : '#333333';
