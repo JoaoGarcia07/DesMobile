@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground, TextInput, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // 1. Importar o roteador
 import api from '../../api'; 
-import { useTheme } from '../_layout'; // Importa o tema global
+import { useTheme } from '../_layout'; 
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
+  const router = useRouter(); // 2. Inicializar o roteador
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState({ unidade: "Unidade Águia" });
@@ -67,8 +69,26 @@ export default function HomeScreen() {
 
         <View style={styles.grid}>
           <ShortcutCard isDarkMode={isDarkMode} title="Unidade" icon="people" color="#FFF4E0" darkColor="#2D2A22" />
-          <ShortcutCard isDarkMode={isDarkMode} title="Especialidades" icon="ribbon" color="#E3F2FD" darkColor="#222A2D" />
-          <ShortcutCard isDarkMode={isDarkMode} title="Agenda" icon="calendar" color="#F1F8E9" darkColor="#232D22" />
+          
+          {/* 3. Configurar o clique para navegar para /especialidades */}
+          <ShortcutCard 
+            isDarkMode={isDarkMode} 
+            title="Especialidades" 
+            icon="ribbon" 
+            color="#E3F2FD" 
+            darkColor="#222A2D" 
+            onPress={() => router.push("/especialidades" as any)} 
+          />
+          
+          <ShortcutCard 
+            isDarkMode={isDarkMode} 
+            title="Agenda" 
+            icon="calendar" 
+            color="#F1F8E9" 
+            darkColor="#232D22" 
+            onPress={() => router.push("/agenda" as any)} 
+          />
+          
           <ShortcutCard isDarkMode={isDarkMode} title="Requisitos" icon="list" color="#FFFDE7" darkColor="#2D2D22" />
         </View>
       </View>
@@ -76,9 +96,13 @@ export default function HomeScreen() {
   );
 }
 
-function ShortcutCard({ title, icon, color, darkColor, isDarkMode }: any) {
+// 4. Adicionar a prop onPress ao componente de card
+function ShortcutCard({ title, icon, color, darkColor, isDarkMode, onPress }: any) {
   return (
-    <TouchableOpacity style={[styles.card, { backgroundColor: isDarkMode ? darkColor : color }]}>
+    <TouchableOpacity 
+      style={[styles.card, { backgroundColor: isDarkMode ? darkColor : color }]}
+      onPress={onPress}
+    >
       <Ionicons name={icon} size={32} color="#6b8e23" />
       <Text style={[styles.cardText, { color: isDarkMode ? '#FFF' : '#333' }]}>{title}</Text>
     </TouchableOpacity>
