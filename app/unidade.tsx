@@ -1,15 +1,18 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ImageBackground, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Image, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from './_layout'; //
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from './_layout'; // Caminho corrigido para evitar erros de importação
+
+const { width } = Dimensions.get('window');
 
 export default function UnidadeScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
 
   const theme = {
-    overlay: isDarkMode ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.88)',
+    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
     card: isDarkMode ? '#1E293B' : '#FFFFFF',
     text: isDarkMode ? '#F8FAFC' : '#1E293B',
     subText: isDarkMode ? '#94A3B8' : '#64748B',
@@ -17,42 +20,34 @@ export default function UnidadeScreen() {
     border: isDarkMode ? '#334155' : '#E2E8F0',
   };
 
-  // Dados fictícios dos membros (No futuro virão do seu IP .85)
   const membros = [
-    { id: '1', nome: 'João Garcia', cargo: 'Conselheiro (ADM)', foto: 'https://avatar.iran.liara.run/public/boy?1' },
-    { id: '2', nome: 'Arthur Vieira', cargo: 'Capitão', foto: 'https://avatar.iran.liara.run/public/boy?2' },
-    { id: '3', nome: 'Silas Tristoni', cargo: 'Secretário', foto: 'https://avatar.iran.liara.run/public/boy?3' },
-    { id: '4', nome: 'Felipe Fernando', cargo: 'Tesoureiro', foto: 'https://avatar.iran.liara.run/public/boy?4' },
+    { id: '1', nome: 'João Garcia', cargo: 'Conselheiro (ADM)', foto: 'https://avatar.iran.liara.run/public/boy?1', color: '#EF4444' },
+    { id: '2', nome: 'Arthur Vieira', cargo: 'Capitão', foto: 'https://avatar.iran.liara.run/public/boy?2', color: '#F59E0B' },
+    { id: '3', nome: 'Silas Tristoni', cargo: 'Secretário', foto: 'https://avatar.iran.liara.run/public/boy?3', color: '#10B981' },
+    { id: '4', nome: 'Felipe Fernando', cargo: 'Tesoureiro', foto: 'https://avatar.iran.liara.run/public/boy?4', color: '#3B82F6' },
   ];
 
   return (
-    <ImageBackground 
-      source={{ uri: 'https://images.unsplash.com/photo-1523733232020-a883f3e4c59e?q=80&w=1000' }} 
-      style={styles.container}
-    >
-      <View style={[styles.overlay, { backgroundColor: theme.overlay }]}>
-        
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={[styles.backBtn, { backgroundColor: theme.card }]}>
-            <Ionicons name="chevron-back" size={24} color={theme.text} />
-          </TouchableOpacity>
-          <View>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Minha Unidade</Text>
-            <Text style={[styles.headerSub, { color: theme.subText }]}>Unidade Águia</Text>
-          </View>
-        </View>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      {/* Header Elite - Título no topo */}
+      <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>MINHA UNIDADE</Text>
+      </LinearGradient>
 
-        {/* Resumo da Unidade */}
+      <View style={styles.content}>
+        {/* Card de Status da Unidade Gamificado */}
         <View style={[styles.statsRow, { backgroundColor: theme.card }]}>
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: theme.accent }]}>4</Text>
-            <Text style={[styles.statLabel, { color: theme.subText }]}>Membros</Text>
+            <Text style={[styles.statLabel, { color: theme.subText }]}>MEMBROS</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: theme.border }]} />
           <View style={styles.statItem}>
             <Text style={[styles.statValue, { color: theme.accent }]}>1.250</Text>
-            <Text style={[styles.statLabel, { color: theme.subText }]}>Pontos</Text>
+            <Text style={[styles.statLabel, { color: theme.subText }]}>PONTOS XP</Text>
           </View>
         </View>
 
@@ -61,45 +56,81 @@ export default function UnidadeScreen() {
         <FlatList
           data={membros}
           keyExtractor={item => item.id}
+          showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <TouchableOpacity style={[styles.membroCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity 
+              style={[styles.membroCard, { backgroundColor: theme.card }]}
+              activeOpacity={0.8}
+            >
               <View style={styles.membroInfo}>
-                <Image source={{ uri: item.foto }} style={styles.avatar} />
+                <View style={[styles.avatarWrapper, { borderColor: item.color }]}>
+                  <Image source={{ uri: item.foto }} style={styles.avatar} />
+                </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.nome, { color: theme.text }]}>{item.nome}</Text>
-                  <Text style={[styles.cargo, { color: theme.subText }]}>{item.cargo}</Text>
+                  <Text style={[styles.cargo, { color: item.color }]}>{item.cargo}</Text>
                 </View>
               </View>
-              <TouchableOpacity>
-                <Ionicons name="chatbubble-ellipses-outline" size={22} color={theme.accent} />
+              <TouchableOpacity style={styles.chatBtn}>
+                <Ionicons name="chatbubble-ellipses" size={20} color={theme.accent} />
               </TouchableOpacity>
             </TouchableOpacity>
           )}
         />
       </View>
-    </ImageBackground>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  overlay: { flex: 1, paddingHorizontal: 20 },
-  header: { marginTop: 60, flexDirection: 'row', alignItems: 'center', marginBottom: 25 },
-  backBtn: { width: 45, height: 45, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 15, elevation: 4 },
-  headerTitle: { fontSize: 26, fontWeight: 'bold' },
-  headerSub: { fontSize: 14, fontWeight: '600' },
-  statsRow: { flexDirection: 'row', padding: 20, borderRadius: 20, marginBottom: 25, elevation: 5, alignItems: 'center' },
+  header: { 
+    height: 120, 
+    paddingTop: 15, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30
+  },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 12, marginRight: 15 },
+  headerTitle: { color: 'white', fontSize: 18, fontWeight: '900', letterSpacing: 2 },
+  content: { flex: 1, padding: 20 },
+  statsRow: { 
+    flexDirection: 'row', 
+    padding: 22, 
+    borderRadius: 25, 
+    marginBottom: 30, 
+    elevation: 8, 
+    shadowColor: '#000', 
+    shadowOpacity: 0.1, 
+    shadowRadius: 10,
+    marginTop: -40, // Efeito de flutuação sobre o header
+    alignItems: 'center'
+  },
   statItem: { flex: 1, alignItems: 'center' },
-  statValue: { fontSize: 22, fontWeight: 'bold' },
-  statLabel: { fontSize: 12, fontWeight: '600', marginTop: 4 },
-  statDivider: { width: 1, height: '70%' },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15, marginLeft: 5 },
-  list: { paddingBottom: 40 },
-  membroCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderRadius: 18, marginBottom: 12, borderWidth: 1, elevation: 2 },
+  statValue: { fontSize: 24, fontWeight: '900' },
+  statLabel: { fontSize: 10, fontWeight: '800', marginTop: 4, letterSpacing: 1 },
+  statDivider: { width: 1, height: '60%' },
+  sectionTitle: { fontSize: 16, fontWeight: '900', marginBottom: 15, marginLeft: 5, textTransform: 'uppercase', letterSpacing: 1 },
+  list: { paddingBottom: 20 },
+  membroCard: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    padding: 15, 
+    borderRadius: 22, 
+    marginBottom: 12, 
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.05
+  },
   membroInfo: { flexDirection: 'row', alignItems: 'center' },
-  avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#EEE' },
+  avatarWrapper: { padding: 2, borderRadius: 30, borderWidth: 2 },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#EEE' },
   textContainer: { marginLeft: 15 },
   nome: { fontSize: 16, fontWeight: 'bold' },
-  cargo: { fontSize: 13, marginTop: 2, fontWeight: '500' }
+  cargo: { fontSize: 12, marginTop: 2, fontWeight: '800', textTransform: 'uppercase' },
+  chatBtn: { padding: 10, backgroundColor: 'rgba(107, 142, 35, 0.1)', borderRadius: 12 }
 });

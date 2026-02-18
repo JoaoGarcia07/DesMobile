@@ -1,101 +1,126 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from './_layout'; //
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from './_layout'; // Caminho corrigido para evitar erro de cascata
+
+const { width } = Dimensions.get('window');
 
 export default function UnidadeAguiaScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
 
   const theme = {
-    bg: isDarkMode ? '#121212' : '#F8F9FA',
-    card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    text: isDarkMode ? '#FFFFFF' : '#333333',
-    subText: isDarkMode ? '#AAAAAA' : '#666666',
+    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
+    card: isDarkMode ? '#1E293B' : '#FFFFFF',
+    text: isDarkMode ? '#F8FAFC' : '#1E293B',
+    subText: isDarkMode ? '#94A3B8' : '#64748B',
     accent: '#6b8e23'
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} showsVerticalScrollIndicator={false}>
-      {/* Header com Botão Voltar */}
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      {/* Header Premium com Título Elevado */}
+      <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={28} color={theme.text} />
+          <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Unidade Águia</Text>
-      </View>
+        <Text style={styles.headerTitle}>UNIDADE ÁGUIA</Text>
+      </LinearGradient>
 
-      <View style={styles.content}>
-        {/* Card do Grito de Guerra */}
-        <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="megaphone-outline" size={24} color={theme.accent} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Grito de Guerra</Text>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.content}>
+          
+          {/* Card do Grito de Guerra Estilizado */}
+          <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconBadge, { backgroundColor: theme.accent + '20' }]}>
+                <Ionicons name="megaphone" size={22} color={theme.accent} />
+              </View>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Grito de Guerra</Text>
+            </View>
+            <Text style={[styles.gritoText, { color: theme.subText }]}>
+              "Nas alturas vamos voar, com a força de Deus vamos conquistar! Águia!"
+            </Text>
           </View>
-          <Text style={[styles.gritoText, { color: theme.subText }]}>
-            "Nas alturas vamos voar, com a força de Deus vamos conquistar! Águia!"
-          </Text>
-        </View>
 
-        {/* Card de Informações do ADM */}
-        <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
-          <View style={styles.cardHeader}>
-            <Ionicons name="ribbon-outline" size={24} color={theme.accent} />
-            <Text style={[styles.cardTitle, { color: theme.text }]}>Objetivo da Unidade</Text>
+          {/* Card de Objetivo da Unidade */}
+          <View style={[styles.infoCard, { backgroundColor: theme.card }]}>
+            <View style={styles.cardHeader}>
+              <View style={[styles.iconBadge, { backgroundColor: '#3B82F620' }]}>
+                <Ionicons name="ribbon" size={22} color="#3B82F6" />
+              </View>
+              <Text style={[styles.cardTitle, { color: theme.text }]}>Objetivo da Unidade</Text>
+            </View>
+            <Text style={[styles.gritoText, { color: theme.subText }]}>
+              Completar todas as classes regulares e avançadas até o Campori regional de 2026.
+            </Text>
           </View>
-          <Text style={[styles.gritoText, { color: theme.subText }]}>
-            Completar todas as classes regulares e avançadas até o Campori regional de 2026.
-          </Text>
+
+          {/* Seção de Membros */}
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionLabel, { color: theme.text }]}>Membros Ativos</Text>
+            <View style={styles.countBadge}>
+              <Text style={styles.countText}>4 Membros</Text>
+            </View>
+          </View>
+          
+          <MembroRow theme={theme} nome="João Garcia" cargo="Conselheiro" icon="shield-half" color="#EF4444" />
+          <MembroRow theme={theme} nome="Arthur Vieira" cargo="Capitão" icon="star" color="#F59E0B" />
+          <MembroRow theme={theme} nome="Silas Tristoni" cargo="Secretário" icon="document-text" color="#10B981" />
+          <MembroRow theme={theme} nome="Felipe Fernando" cargo="Membro" icon="person" color="#94A3B8" />
+
         </View>
-
-        {/* Seção de Membros (Visão ADM) */}
-        <Text style={[styles.sectionLabel, { color: theme.text }]}>Membros Ativos</Text>
-        
-        <MembroRow theme={theme} nome="João Garcia" cargo="Conselheiro" />
-        <MembroRow theme={theme} nome="Arthur Vieira" cargo="Capitão" />
-        <MembroRow theme={theme} nome="Silas Tristoni" cargo="Secretário" />
-        <MembroRow theme={theme} nome="Felipe Fernando" cargo="Membro" />
-
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
-// Sub-componente para os membros
-function MembroRow({ theme, nome, cargo }: any) {
+function MembroRow({ theme, nome, cargo, icon, color }: any) {
   return (
-    <View style={[styles.membroRow, { backgroundColor: theme.card }]}>
+    <TouchableOpacity style={[styles.membroRow, { backgroundColor: theme.card }]} activeOpacity={0.7}>
       <View style={styles.membroLeft}>
-        <View style={styles.avatarPlaceholder}>
-          <Ionicons name="person" size={20} color="#999" />
+        <View style={[styles.avatarPlaceholder, { backgroundColor: color + '20' }]}>
+          <Ionicons name={icon} size={20} color={color} />
         </View>
         <View>
           <Text style={[styles.membroNome, { color: theme.text }]}>{nome}</Text>
-          <Text style={[styles.membroCargo, { color: theme.accent }]}>{cargo}</Text>
+          <Text style={[styles.membroCargo, { color: color }]}>{cargo}</Text>
         </View>
       </View>
-      <TouchableOpacity>
-        <Ionicons name="ellipsis-vertical" size={20} color={theme.subText} />
-      </TouchableOpacity>
-    </View>
+      <Ionicons name="chevron-forward" size={18} color={theme.subText} />
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { marginTop: 60, paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  backBtn: { marginRight: 15 },
-  headerTitle: { fontSize: 26, fontWeight: 'bold' },
-  content: { paddingHorizontal: 20 },
-  infoCard: { padding: 20, borderRadius: 20, marginBottom: 15, elevation: 2 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  cardTitle: { marginLeft: 10, fontSize: 18, fontWeight: 'bold' },
-  gritoText: { fontSize: 15, fontStyle: 'italic', lineHeight: 22 },
-  sectionLabel: { fontSize: 18, fontWeight: 'bold', marginTop: 10, marginBottom: 15 },
-  membroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderRadius: 15, marginBottom: 10 },
+  header: { 
+    height: 120, 
+    paddingTop: 45, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30
+  },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 12, marginRight: 15 },
+  headerTitle: { color: 'white', fontSize: 18, fontWeight: '900', letterSpacing: 2 },
+  scrollContent: { paddingBottom: 40 },
+  content: { padding: 20 },
+  infoCard: { padding: 20, borderRadius: 25, marginBottom: 15, elevation: 4, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 10 },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  iconBadge: { padding: 8, borderRadius: 12, marginRight: 12 },
+  cardTitle: { fontSize: 17, fontWeight: 'bold' },
+  gritoText: { fontSize: 15, fontStyle: 'italic', lineHeight: 24, paddingLeft: 5 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15, marginBottom: 15 },
+  sectionLabel: { fontSize: 18, fontWeight: '900', marginLeft: 5 },
+  countBadge: { backgroundColor: 'rgba(107, 142, 35, 0.15)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
+  countText: { color: '#6b8e23', fontSize: 12, fontWeight: 'bold' },
+  membroRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderRadius: 22, marginBottom: 10, elevation: 2 },
   membroLeft: { flexDirection: 'row', alignItems: 'center' },
-  avatarPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#eee', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  avatarPlaceholder: { width: 46, height: 46, borderRadius: 15, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   membroNome: { fontSize: 16, fontWeight: 'bold' },
-  membroCargo: { fontSize: 13, fontWeight: '600' }
+  membroCargo: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', marginTop: 2 }
 });
