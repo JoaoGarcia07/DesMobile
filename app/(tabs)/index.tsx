@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground, TextInput, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // 1. Importar o roteador
+import { useRouter } from 'expo-router'; 
 import api from '../../api'; 
 import { useTheme } from '../_layout'; 
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
-  const router = useRouter(); // 2. Inicializar o roteador
+  const router = useRouter(); 
   const { isDarkMode } = useTheme();
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState({ unidade: "Unidade Águia" });
@@ -68,9 +68,17 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <View style={styles.grid}>
-          <ShortcutCard isDarkMode={isDarkMode} title="Unidade" icon="people" color="#FFF4E0" darkColor="#2D2A22" />
+          {/* Card de Unidade - Preparado para expansão */}
+          <ShortcutCard 
+            isDarkMode={isDarkMode} 
+            title="Unidade" 
+            icon="people" 
+            color="#FFF4E0" 
+            darkColor="#2D2A22" 
+            onPress={() => router.push("/unidade" as any)}
+          />
           
-          {/* 3. Configurar o clique para navegar para /especialidades */}
+          {/* Card de Especialidades conectado */}
           <ShortcutCard 
             isDarkMode={isDarkMode} 
             title="Especialidades" 
@@ -80,6 +88,7 @@ export default function HomeScreen() {
             onPress={() => router.push("/especialidades" as any)} 
           />
           
+          {/* Card de Agenda conectado */}
           <ShortcutCard 
             isDarkMode={isDarkMode} 
             title="Agenda" 
@@ -89,19 +98,27 @@ export default function HomeScreen() {
             onPress={() => router.push("/agenda" as any)} 
           />
           
-          <ShortcutCard isDarkMode={isDarkMode} title="Requisitos" icon="list" color="#FFFDE7" darkColor="#2D2D22" />
+          {/* Card de Requisitos conectado */}
+          <ShortcutCard 
+            isDarkMode={isDarkMode} 
+            title="Requisitos" 
+            icon="list" 
+            color="#FFFDE7" 
+            darkColor="#2D2D22" 
+            onPress={() => router.push("/requisitos" as any)}
+          />
         </View>
       </View>
     </ScrollView>
   );
 }
 
-// 4. Adicionar a prop onPress ao componente de card
 function ShortcutCard({ title, icon, color, darkColor, isDarkMode, onPress }: any) {
   return (
     <TouchableOpacity 
       style={[styles.card, { backgroundColor: isDarkMode ? darkColor : color }]}
       onPress={onPress}
+      activeOpacity={0.7}
     >
       <Ionicons name={icon} size={32} color="#6b8e23" />
       <Text style={[styles.cardText, { color: isDarkMode ? '#FFF' : '#333' }]}>{title}</Text>
