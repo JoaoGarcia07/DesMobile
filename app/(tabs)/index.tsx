@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ImageBackground, TextInput, TouchableOpacity, ScrollView, Dimensions, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router'; 
+import { LinearGradient } from 'expo-linear-gradient'; 
 import api from '../../api'; 
 import { useTheme } from '../_layout'; 
 
@@ -14,10 +15,11 @@ export default function HomeScreen() {
   const [info, setInfo] = useState({ unidade: "Unidade Águia" });
 
   const theme = {
-    bg: isDarkMode ? '#121212' : '#FFF',
-    text: isDarkMode ? '#FFF' : '#333',
-    card: isDarkMode ? '#1E1E1E' : '#F9F9F9',
-    input: isDarkMode ? '#2D2D2D' : 'white',
+    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
+    text: isDarkMode ? '#F8FAFC' : '#1E293B',
+    card: isDarkMode ? '#1E293B' : '#FFFFFF',
+    subText: isDarkMode ? '#94A3B8' : '#64748B',
+    accent: '#6b8e23'
   };
 
   useEffect(() => {
@@ -35,78 +37,76 @@ export default function HomeScreen() {
   if (loading) {
     return (
       <View style={[styles.centered, { backgroundColor: theme.bg }]}>
-        <ActivityIndicator size="large" color="#6b8e23" />
-        <Text style={{ color: theme.text }}>Carregando dados...</Text>
+        <ActivityIndicator size="large" color={theme.accent} />
       </View>
     );
   }
 
   return (
     <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} showsVerticalScrollIndicator={false}>
+      {/* Header com a imagem de fundo */}
       <ImageBackground 
         source={{ uri: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=1000' }} 
         style={styles.headerImage}
       >
-        <View style={styles.overlay}>
-          <View style={[styles.searchBar, { backgroundColor: theme.input }]}>
-            <Ionicons name="search" size={20} color="#888" />
-            <TextInput 
-              placeholder="Pesquisar atividades..." 
-              placeholderTextColor="#888"
-              style={[styles.searchInput, { color: theme.text }]} 
-            />
+        <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.7)']} style={styles.overlay}>
+          {/* Barra de Pesquisa centralizada na imagem */}
+          <View style={styles.searchWrapper}>
+             <Ionicons name="search" size={20} color="#AAA" style={styles.searchIcon} />
+             <TextInput 
+                placeholder="Pesquisar atividades..." 
+                placeholderTextColor="#AAA"
+                style={styles.searchInput} 
+             />
           </View>
-        </View>
+        </LinearGradient>
       </ImageBackground>
 
+      {/* Conteúdo principal - Ajustado para não ficar colado */}
       <View style={styles.content}>
         <Text style={[styles.welcomeText, { color: theme.text }]}>Olá, Desbravador!</Text>
         
-        {/* Card Principal ATUALIZADO para navegar para Unidade Águia */}
+        {/* Card Principal */}
         <TouchableOpacity 
-          style={styles.mainCard} 
-          activeOpacity={0.8}
+          style={styles.mainCardShadow}
+          activeOpacity={0.9}
           onPress={() => router.push("/unidade-aguia" as any)}
         >
-          <Ionicons name="shield-half" size={50} color="white" />
-          <Text style={styles.mainCardTitle}>{info.unidade}</Text>
+          <LinearGradient colors={['#2C3E50', '#000000']} style={styles.mainCardGradient}>
+            <View style={styles.mainCardContent}>
+               <View style={styles.shieldCircle}>
+                  <Ionicons name="shield-half" size={40} color="white" />
+               </View>
+               <View>
+                  <Text style={styles.mainCardTitle}>{info.unidade}</Text>
+                  <Text style={styles.mainCardSub}>Clique para ver detalhes</Text>
+               </View>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.3)" />
+          </LinearGradient>
         </TouchableOpacity>
 
+        {/* Grade de atalhos */}
         <View style={styles.grid}>
           <ShortcutCard 
-            isDarkMode={isDarkMode} 
-            title="Unidade" 
-            icon="people" 
-            color="#FFF4E0" 
-            darkColor="#2D2A22" 
-            onPress={() => router.push("/unidade" as any)}
+            title="Unidade" icon="people" color="#FF9F43" 
+            onPress={() => router.push("/unidade" as any)} 
+            theme={theme}
           />
-          
           <ShortcutCard 
-            isDarkMode={isDarkMode} 
-            title="Especialidades" 
-            icon="ribbon" 
-            color="#E3F2FD" 
-            darkColor="#222A2D" 
-            onPress={() => router.push("/especialidades" as any)} 
+            title="Especialidades" icon="ribbon" color="#00D2D3" 
+            onPress={() => router.push("/especialidades" as any)}
+            theme={theme}
           />
-          
           <ShortcutCard 
-            isDarkMode={isDarkMode} 
-            title="Agenda" 
-            icon="calendar" 
-            color="#F1F8E9" 
-            darkColor="#232D22" 
-            onPress={() => router.push("/agenda" as any)} 
+            title="Agenda" icon="calendar" color="#54A0FF" 
+            onPress={() => router.push("/agenda" as any)}
+            theme={theme}
           />
-          
           <ShortcutCard 
-            isDarkMode={isDarkMode} 
-            title="Requisitos" 
-            icon="list" 
-            color="#FFFDE7" 
-            darkColor="#2D2D22" 
+            title="Requisitos" icon="list" color="#10AC84" 
             onPress={() => router.push("/requisitos" as any)}
+            theme={theme}
           />
         </View>
       </View>
@@ -114,15 +114,17 @@ export default function HomeScreen() {
   );
 }
 
-function ShortcutCard({ title, icon, color, darkColor, isDarkMode, onPress }: any) {
+function ShortcutCard({ title, icon, color, onPress, theme }: any) {
   return (
     <TouchableOpacity 
-      style={[styles.card, { backgroundColor: isDarkMode ? darkColor : color }]}
+      style={[styles.card, { backgroundColor: theme.card }]} 
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <Ionicons name={icon} size={32} color="#6b8e23" />
-      <Text style={[styles.cardText, { color: isDarkMode ? '#FFF' : '#333' }]}>{title}</Text>
+      <View style={[styles.iconBox, { backgroundColor: color + '20' }]}>
+        <Ionicons name={icon} size={28} color={color} />
+      </View>
+      <Text style={[styles.cardText, { color: theme.text }]}>{title}</Text>
     </TouchableOpacity>
   );
 }
@@ -130,15 +132,31 @@ function ShortcutCard({ title, icon, color, darkColor, isDarkMode, onPress }: an
 const styles = StyleSheet.create({
   container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  headerImage: { width: '100%', height: 220 },
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', paddingHorizontal: 20 },
-  searchBar: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 25, elevation: 5 },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
-  content: { padding: 20 },
-  welcomeText: { fontSize: 24, fontWeight: 'bold', marginBottom: 20 },
-  mainCard: { backgroundColor: '#2C3E50', borderRadius: 20, padding: 30, alignItems: 'center', marginBottom: 20 },
-  mainCardTitle: { color: 'white', fontSize: 20, fontWeight: 'bold', marginTop: 10 },
+  headerImage: { width: '100%', height: 260 },
+  overlay: { flex: 1, justifyContent: 'center', padding: 20 },
+  searchWrapper: { backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 15, height: 50, elevation: 5 },
+  searchIcon: { marginRight: 10 },
+  searchInput: { flex: 1, color: '#333', fontSize: 16 },
+  content: { 
+    padding: 20, 
+    marginTop: 10, // Corrigido: Valor positivo para afastar da imagem
+    borderTopLeftRadius: 30, 
+    borderTopRightRadius: 30 
+  },
+  welcomeText: { 
+    fontSize: 24, 
+    fontWeight: 'bold', 
+    marginBottom: 20,
+    marginTop: 5 // Pequeno ajuste adicional para respiro visual
+  },
+  mainCardShadow: { borderRadius: 25, elevation: 8, marginBottom: 25 },
+  mainCardGradient: { padding: 20, borderRadius: 25, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  mainCardContent: { flexDirection: 'row', alignItems: 'center' },
+  shieldCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  mainCardTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
+  mainCardSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
-  card: { width: (width - 60) / 2, height: 120, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 20, elevation: 2 },
-  cardText: { marginTop: 10, fontWeight: 'bold' }
+  card: { width: (width - 55) / 2, height: 130, borderRadius: 25, justifyContent: 'center', alignItems: 'center', marginBottom: 15, elevation: 3 },
+  iconBox: { width: 55, height: 55, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
+  cardText: { fontWeight: 'bold', fontSize: 14 }
 });
