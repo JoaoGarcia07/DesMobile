@@ -1,139 +1,168 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, ScrollView, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; 
-import { useTheme } from '../_layout'; 
+import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../_layout'; //
 
 export default function ConfigScreen() {
   const router = useRouter();
-  const [notificacoes, setNotificacoes] = useState(true);
   const { isDarkMode, toggleTheme } = useTheme();
 
-  // Cores dinâmicas baseadas no tema global
   const theme = {
-    bg: isDarkMode ? '#121212' : '#F8F9FA',
-    card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    text: isDarkMode ? '#FFFFFF' : '#333333',
-    subText: isDarkMode ? '#AAAAAA' : '#999999'
+    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
+    card: isDarkMode ? '#1E293B' : '#FFFFFF',
+    text: isDarkMode ? '#F8FAFC' : '#1E293B',
+    subText: isDarkMode ? '#94A3B8' : '#64748B',
+    accent: '#6b8e23',
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]}>
-      <Text style={[styles.header, { color: theme.text }]}>Configurações</Text>
+    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} showsVerticalScrollIndicator={false}>
+      {/* Header com Título no Topo */}
+      <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>CONFIGURAÇÕES</Text>
+      </LinearGradient>
 
-      {/* Seção: Conta */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Conta</Text>
+      <View style={styles.content}>
         
-        <ConfigItem 
-          isDarkMode={isDarkMode} 
-          icon="person-outline" 
-          label="Editar Perfil" 
-          onPress={() => router.push("/editar-perfil" as any)} 
-        />
-
-        {/* Agora conectado à tela de Alterar Senha corrigida */}
-        <ConfigItem 
-          isDarkMode={isDarkMode} 
-          icon="lock-closed-outline" 
-          label="Alterar Senha" 
-          onPress={() => router.push("/alterar-senha" as any)} 
-        />
-        
-        <ConfigItem 
-          isDarkMode={isDarkMode} 
-          icon="shield-checkmark-outline" 
-          label="Privacidade" 
-          onPress={() => router.push("/privacidade" as any)} 
-        />
-      </View>
-
-      {/* Seção: Preferências */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Preferências</Text>
-        
-        <View style={[styles.itemRow, { backgroundColor: theme.card }]}>
-          <View style={styles.iconLabel}>
-            <Ionicons name="notifications-outline" size={22} color="#6b8e23" />
-            <Text style={[styles.itemText, { color: theme.text }]}>Notificações</Text>
-          </View>
-          <Switch 
-            value={notificacoes} 
-            onValueChange={setNotificacoes} 
-            trackColor={{ false: "#767577", true: "#6b8e23" }} 
-          />
-        </View>
-
-        <View style={[styles.itemRow, { backgroundColor: theme.card }]}>
-          <View style={styles.iconLabel}>
-            <Ionicons name="moon-outline" size={22} color="#6b8e23" />
-            <Text style={[styles.itemText, { color: theme.text }]}>Modo Escuro</Text>
+        {/* SEÇÃO: APARÊNCIA */}
+        <Text style={[styles.sectionTitle, { color: theme.subText }]}>APARÊNCIA</Text>
+        <View style={[styles.configCard, { backgroundColor: theme.card }]}>
+          <View style={styles.cardLeft}>
+            <View style={[styles.iconBox, { backgroundColor: '#6366F120' }]}>
+              <Ionicons name="moon" size={22} color="#6366F1" />
+            </View>
+            <Text style={[styles.cardText, { color: theme.text }]}>Modo Escuro</Text>
           </View>
           <Switch 
             value={isDarkMode} 
-            onValueChange={toggleTheme} 
-            trackColor={{ false: "#767577", true: "#6b8e23" }} 
+            onValueChange={toggleTheme}
+            trackColor={{ false: '#CBD5E1', true: theme.accent }}
           />
         </View>
-      </View>
 
-      {/* Seção: Suporte */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Suporte</Text>
-        
+        {/* SEÇÃO: SEGURANÇA E ACESSO */}
+        <Text style={[styles.sectionTitle, { color: theme.subText, marginTop: 25 }]}>SEGURANÇA</Text>
         <ConfigItem 
-          isDarkMode={isDarkMode} 
-          icon="help-circle-outline" 
+          icon="person-outline" 
+          label="Editar Perfil" 
+          color="#3B82F6" 
+          theme={theme} 
+          onPress={() => router.push('/editar-perfil' as any)} 
+        />
+        <ConfigItem 
+          icon="key-outline" 
+          label="Alterar Senha" 
+          color="#FF4757" 
+          theme={theme} 
+          onPress={() => router.push('/alterar-senha' as any)} // Restaurado
+        />
+
+        {/* SEÇÃO: GERENCIAMENTO */}
+        <Text style={[styles.sectionTitle, { color: theme.subText, marginTop: 25 }]}>GERENCIAMENTO</Text>
+        <ConfigItem 
+          icon="add-circle-outline" 
+          label="Adicionar Atividade" 
+          color={theme.accent} 
+          theme={theme} 
+          onPress={() => router.push('/adicionar' as any)} 
+        />
+        <ConfigItem 
+          icon="calendar-outline" 
+          label="Gerenciar Agenda" 
+          color="#1E90FF" 
+          theme={theme} 
+          onPress={() => router.push('/agenda' as any)} 
+        />
+
+        {/* SEÇÃO: SUPORTE E INFORMAÇÕES */}
+        <Text style={[styles.sectionTitle, { color: theme.subText, marginTop: 25 }]}>SUPORTE E SOBRE</Text>
+        <ConfigItem 
+          icon="help-buoy-outline" 
           label="Central de Ajuda" 
-          onPress={() => router.push("/ajuda" as any)} 
+          color="#F59E0B" 
+          theme={theme} 
+          onPress={() => router.push('/ajuda' as any)} // Restaurado
         />
-
         <ConfigItem 
-          isDarkMode={isDarkMode} 
-          icon="document-text-outline" 
-          label="Termos de Uso" 
-          onPress={() => router.push("/termos" as any)}
-        />
-        
-        <ConfigItem 
-          isDarkMode={isDarkMode} 
           icon="information-circle-outline" 
-          label="Sobre o App" 
-          onPress={() => router.push("/sobre" as any)} 
+          label="Sobre o Aplicativo" 
+          color="#10B981" 
+          theme={theme} 
+          onPress={() => router.push('/sobre' as any)} // Restaurado
         />
-      </View>
+        <ConfigItem 
+          icon="document-text-outline" 
+          label="Termos e Privacidade" 
+          color="#94A3B8" 
+          theme={theme} 
+          onPress={() => router.push('/termos' as any)} 
+        />
 
-      <Text style={styles.version}>Versão 1.0.0</Text>
+        <TouchableOpacity style={styles.logoutBtn}>
+          <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          <Text style={styles.logoutText}>Encerrar Sessão</Text>
+        </TouchableOpacity>
+
+        <View style={styles.versionContainer}>
+            <Text style={[styles.versionText, { color: theme.subText }]}>Desmobile v2.1.0</Text>
+        </View>
+      </View>
     </ScrollView>
   );
 }
 
-function ConfigItem({ icon, label, isDarkMode, onPress }: any) {
-  const cardColor = isDarkMode ? '#1E1E1E' : '#FFFFFF';
-  const textColor = isDarkMode ? '#FFFFFF' : '#333333';
-
+function ConfigItem({ icon, label, color, theme, onPress }: any) {
   return (
     <TouchableOpacity 
-      style={[styles.itemRow, { backgroundColor: cardColor }]} 
+      style={[styles.configCard, { backgroundColor: theme.card }]} 
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={styles.iconLabel}>
-        <Ionicons name={icon} size={22} color="#6b8e23" />
-        <Text style={[styles.itemText, { color: textColor }]}>{label}</Text>
+      <View style={styles.cardLeft}>
+        <View style={[styles.iconBox, { backgroundColor: color + '20' }]}>
+          <Ionicons name={icon} size={22} color={color} />
+        </View>
+        <Text style={[styles.cardText, { color: theme.text }]}>{label}</Text>
       </View>
-      <Ionicons name="chevron-forward" size={20} color="#CCC" />
+      <Ionicons name="chevron-forward" size={18} color={theme.subText} />
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 20 },
-  header: { fontSize: 28, fontWeight: 'bold', marginTop: 60, marginBottom: 30 },
-  section: { marginBottom: 25 },
-  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#999', marginBottom: 10, textTransform: 'uppercase' },
-  itemRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 15, borderRadius: 12, marginBottom: 8, elevation: 1 },
-  iconLabel: { flexDirection: 'row', alignItems: 'center' },
-  itemText: { fontSize: 16, marginLeft: 15 },
-  version: { textAlign: 'center', color: '#CCC', marginTop: 20, marginBottom: 40, fontSize: 12 }
+  container: { flex: 1 },
+  header: { 
+    height: 120, 
+    paddingTop: 45, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30
+  },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 12, marginRight: 15 },
+  headerTitle: { color: 'white', fontSize: 18, fontWeight: '900', letterSpacing: 2 },
+  content: { padding: 20 },
+  sectionTitle: { fontSize: 11, fontWeight: '900', letterSpacing: 1.5, marginBottom: 12, marginLeft: 5 },
+  configCard: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    padding: 15, 
+    borderRadius: 20, 
+    marginBottom: 10,
+    elevation: 3
+  },
+  cardLeft: { flexDirection: 'row', alignItems: 'center' },
+  iconBox: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
+  cardText: { fontSize: 16, fontWeight: '600' },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 30, padding: 10 },
+  logoutText: { color: '#EF4444', fontWeight: 'bold', marginLeft: 10, fontSize: 16 },
+  versionContainer: { alignItems: 'center', marginTop: 15, marginBottom: 40 },
+  versionText: { fontSize: 11, fontWeight: 'bold', opacity: 0.5 }
 });

@@ -1,18 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Linking, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from './_layout'; // Integrado ao seu Modo Escuro
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from './_layout'; // Integrado ao seu tema global
+
+const { width } = Dimensions.get('window');
 
 export default function AjudaScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
 
   const theme = {
-    bg: isDarkMode ? '#121212' : '#F8F9FA',
-    card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    text: isDarkMode ? '#FFFFFF' : '#333333',
-    subText: isDarkMode ? '#AAAAAA' : '#666666',
+    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
+    card: isDarkMode ? '#1E293B' : '#FFFFFF',
+    text: isDarkMode ? '#F8FAFC' : '#1E293B',
+    subText: isDarkMode ? '#94A3B8' : '#64748B',
+    accent: '#6b8e23',
   };
 
   const abrirEmail = () => {
@@ -20,49 +24,58 @@ export default function AjudaScreen() {
   };
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} showsVerticalScrollIndicator={false}>
-      {/* Botão Voltar */}
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={28} color={isDarkMode ? "white" : "#333"} />
-      </TouchableOpacity>
-
-      <View style={styles.header}>
-        <Text style={[styles.title, { color: theme.text }]}>Central de Ajuda</Text>
-        <Text style={[styles.subtitle, { color: theme.subText }]}>Como podemos ajudar você hoje?</Text>
-      </View>
-
-      <View style={styles.content}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Perguntas Frequentes</Text>
-        
-        <FaqItem 
-          theme={theme} 
-          pergunta="Como altero minha senha?" 
-          resposta="Vá em Configurações > Conta > Alterar Senha para definir uma nova credencial." 
-        />
-        <FaqItem 
-          theme={theme} 
-          pergunta="O app funciona offline?" 
-          resposta="Sim, algumas funções como consulta de requisitos funcionam sem internet, mas a agenda exige conexão." 
-        />
-        <FaqItem 
-          theme={theme} 
-          pergunta="Erro de conexão com o servidor?" 
-          resposta="Verifique se o servidor está rodando no IP 192.168.100.85 e se você está na mesma rede." 
-        />
-
-        <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 30 }]}>Ainda precisa de ajuda?</Text>
-        
-        <TouchableOpacity style={styles.contactCard} onPress={abrirEmail}>
-          <View style={styles.contactIcon}>
-            <Ionicons name="mail" size={24} color="white" />
-          </View>
-          <View>
-            <Text style={styles.contactTitle}>Falar com o Suporte</Text>
-            <Text style={styles.contactSub}>suporte@desbravadores.com</Text>
-          </View>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      {/* Header Premium com Título no Topo */}
+      <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+        <Text style={styles.headerTitle}>AJUDA</Text>
+      </LinearGradient>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.welcomeSection}>
+          <Text style={[styles.title, { color: theme.text }]}>Como podemos ajudar?</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>Tire suas dúvidas ou entre em contato com o QG.</Text>
+        </View>
+
+        <View style={styles.content}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Perguntas Frequentes</Text>
+          
+          <FaqItem 
+            theme={theme} 
+            pergunta="Como altero minha senha?" 
+            resposta="Vá em Configurações > Segurança > Recuperar Acesso para definir uma nova credencial." 
+          />
+          <FaqItem 
+            theme={theme} 
+            pergunta="O app funciona offline?" 
+            resposta="Sim, requisitos e manuais ficam salvos, mas a Agenda e Ranking exigem conexão." 
+          />
+          <FaqItem 
+            theme={theme} 
+            pergunta="Erro de conexão com o servidor?" 
+            resposta="Verifique se o servidor está rodando no IP 192.168.100.85 e se você está na mesma rede Wi-Fi." 
+          />
+
+          <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 30 }]}>Ainda com dúvidas?</Text>
+          
+          {/* Card de Contato Estilo Elite */}
+          <TouchableOpacity style={styles.contactCard} onPress={abrirEmail} activeOpacity={0.9}>
+            <LinearGradient colors={['#6b8e23', '#4a6318']} style={styles.contactGradient}>
+              <View style={styles.contactIcon}>
+                <Ionicons name="mail" size={28} color="white" />
+              </View>
+              <View>
+                <Text style={styles.contactTitle}>Falar com o Suporte</Text>
+                <Text style={styles.contactSub}>suporte@desbravadores.com</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="rgba(255,255,255,0.6)" style={{ marginLeft: 'auto' }} />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -73,10 +86,11 @@ function FaqItem({ theme, pergunta, resposta }: any) {
     <TouchableOpacity 
       style={[styles.faqCard, { backgroundColor: theme.card }]} 
       onPress={() => setAberto(!aberto)}
+      activeOpacity={0.7}
     >
       <View style={styles.faqHeader}>
         <Text style={[styles.faqText, { color: theme.text }]}>{pergunta}</Text>
-        <Ionicons name={aberto ? "chevron-up" : "chevron-down"} size={20} color="#6b8e23" />
+        <Ionicons name={aberto ? "chevron-up" : "add"} size={22} color={theme.accent} />
       </View>
       {aberto && <Text style={[styles.faqAnswer, { color: theme.subText }]}>{resposta}</Text>}
     </TouchableOpacity>
@@ -85,18 +99,30 @@ function FaqItem({ theme, pergunta, resposta }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  backButton: { marginTop: 50, marginLeft: 20, width: 40 },
-  header: { padding: 20 },
-  title: { fontSize: 28, fontWeight: 'bold' },
-  subtitle: { fontSize: 16, marginTop: 5 },
+  header: { 
+    height: 120, 
+    paddingTop: 45, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30
+  },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 12, marginRight: 15 },
+  headerTitle: { color: 'white', fontSize: 18, fontWeight: '900', letterSpacing: 2 },
+  scrollContent: { paddingBottom: 40 },
+  welcomeSection: { padding: 25, paddingTop: 30 },
+  title: { fontSize: 26, fontWeight: 'bold' },
+  subtitle: { fontSize: 15, marginTop: 8, lineHeight: 22 },
   content: { paddingHorizontal: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', marginBottom: 15 },
-  faqCard: { padding: 18, borderRadius: 15, marginBottom: 10, elevation: 2 },
+  sectionTitle: { fontSize: 16, fontWeight: '900', letterSpacing: 1, marginBottom: 15, marginLeft: 5 },
+  faqCard: { padding: 20, borderRadius: 22, marginBottom: 12, elevation: 3, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 5 },
   faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  faqText: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: 10 },
-  faqAnswer: { marginTop: 10, fontSize: 14, lineHeight: 20 },
-  contactCard: { backgroundColor: '#6b8e23', flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 20, marginTop: 10, marginBottom: 50 },
-  contactIcon: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 12, borderRadius: 15, marginRight: 15 },
+  faqText: { fontSize: 15, fontWeight: 'bold', flex: 1, marginRight: 10 },
+  faqAnswer: { marginTop: 12, fontSize: 14, lineHeight: 22, opacity: 0.8 },
+  contactCard: { borderRadius: 25, overflow: 'hidden', marginTop: 10, elevation: 8 },
+  contactGradient: { flexDirection: 'row', alignItems: 'center', padding: 20 },
+  contactIcon: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 12, borderRadius: 18, marginRight: 15 },
   contactTitle: { color: 'white', fontSize: 16, fontWeight: 'bold' },
-  contactSub: { color: 'rgba(255,255,255,0.8)', fontSize: 14 }
+  contactSub: { color: 'rgba(255,255,255,0.8)', fontSize: 13, marginTop: 2 }
 });
