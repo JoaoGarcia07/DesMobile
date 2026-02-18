@@ -62,13 +62,17 @@ export default function HomeScreen() {
       <View style={styles.content}>
         <Text style={[styles.welcomeText, { color: theme.text }]}>Olá, Desbravador!</Text>
         
-        <TouchableOpacity style={styles.mainCard}>
+        {/* Card Principal ATUALIZADO para navegar para Unidade Águia */}
+        <TouchableOpacity 
+          style={styles.mainCard} 
+          activeOpacity={0.8}
+          onPress={() => router.push("/unidade-aguia" as any)}
+        >
           <Ionicons name="shield-half" size={50} color="white" />
           <Text style={styles.mainCardTitle}>{info.unidade}</Text>
         </TouchableOpacity>
 
         <View style={styles.grid}>
-          {/* Card de Unidade - Preparado para expansão */}
           <ShortcutCard 
             isDarkMode={isDarkMode} 
             title="Unidade" 
@@ -78,7 +82,6 @@ export default function HomeScreen() {
             onPress={() => router.push("/unidade" as any)}
           />
           
-          {/* Card de Especialidades conectado */}
           <ShortcutCard 
             isDarkMode={isDarkMode} 
             title="Especialidades" 
@@ -88,7 +91,6 @@ export default function HomeScreen() {
             onPress={() => router.push("/especialidades" as any)} 
           />
           
-          {/* Card de Agenda conectado */}
           <ShortcutCard 
             isDarkMode={isDarkMode} 
             title="Agenda" 
@@ -98,7 +100,6 @@ export default function HomeScreen() {
             onPress={() => router.push("/agenda" as any)} 
           />
           
-          {/* Card de Requisitos conectado */}
           <ShortcutCard 
             isDarkMode={isDarkMode} 
             title="Requisitos" 
