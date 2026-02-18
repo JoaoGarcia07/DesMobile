@@ -1,22 +1,25 @@
 import React from 'react';
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useTheme } from '../_layout'; 
 
 export default function TabLayout() {
+  const { isDarkMode } = useTheme();
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#6b8e23', // Verde oliva da foto
-        tabBarInactiveTintColor: '#8e8e8e',
         headerShown: false,
         tabBarStyle: {
+          backgroundColor: isDarkMode ? '#1E293B' : '#FFFFFF',
+          borderTopWidth: 0,
           height: 60,
           paddingBottom: 5,
         },
-      }}
-    >
-      {/* 1. INÍCIO (Onde estava 'home') */}
+        tabBarActiveTintColor: '#6b8e23',
+      }}>
+      
       <Tabs.Screen
         name="index"
         options={{
@@ -25,7 +28,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 2. AGENDA */}
       <Tabs.Screen
         name="agenda"
         options={{
@@ -34,34 +36,19 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 3. BOTÃO CENTRAL (+) */}
+      {/* BOTÃO CENTRAL VINCULADO À CHAMADA */}
       <Tabs.Screen
-        name="adicionar"
+        name="chamada" 
         options={{
           title: '',
           tabBarIcon: () => (
-            <View style={{
-              backgroundColor: '#6b8e23',
-              width: 50,
-              height: 50,
-              borderRadius: 25,
-              justifyContent: 'center',
-              alignSelf: 'center',
-              alignItems: 'center',
-              marginBottom: 10, // Para dar o efeito de saltado da foto
-              elevation: 5,    // Sombra no Android
-              shadowColor: '#000', // Sombra no iOS
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.3,
-              shadowRadius: 2,
-            }}>
+            <View style={styles.fabButton}>
               <Ionicons name="add" size={35} color="white" />
             </View>
           ),
         }}
       />
 
-      {/* 4. PERFIL */}
       <Tabs.Screen
         name="perfil"
         options={{
@@ -70,7 +57,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 5. CONFIGURAÇÕES */}
       <Tabs.Screen
         name="config"
         options={{
@@ -78,6 +64,26 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Ionicons name="settings-outline" size={24} color={color} />,
         }}
       />
+
+      {/* REMOVE ABAS EXTRAS DO MENU VISUAL */}
+      <Tabs.Screen name="adicionar" options={{ href: null }} /> 
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  fabButton: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: '#6b8e23',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: -25, // Efeito saltado para fora da barra
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  }
+});

@@ -1,25 +1,38 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../_layout'; // Caminho corrigido para subir um nível
+
+const { width } = Dimensions.get('window');
 
 export default function AdicionarScreen() {
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [data, setData] = useState(''); // Formato YYYY-MM-DD
-  const [hora, setHora] = useState(''); // Formato HH:MM
+  const [data, setData] = useState('');
+  const [hora, setHora] = useState('');
   const router = useRouter();
+  const { isDarkMode } = useTheme();
+
+  const theme = {
+    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
+    card: isDarkMode ? '#1E293B' : '#FFFFFF',
+    text: isDarkMode ? '#F8FAFC' : '#1E293B',
+    subText: isDarkMode ? '#94A3B8' : '#64748B',
+    inputBg: isDarkMode ? '#2D3748' : '#F1F5F9',
+    accent: '#6b8e23',
+  };
 
   const salvarEvento = async () => {
-    // Validação simples
     if (!titulo || !data || !hora) {
       Alert.alert("Erro", "Preencha pelo menos o título, a data e a hora.");
       return;
     }
 
     try {
-      // LEMBRE-SE: Use o seu IP 192.168.100.90
+      // Endpoint configurado conforme o seu servidor local
       const response = await axios.post('http://192.168.100.90:3000/agenda', {
         titulo,
         descricao,
@@ -28,97 +41,109 @@ export default function AdicionarScreen() {
       });
 
       if (response.data.id) {
-        Alert.alert("Sucesso", "Atividade cadastrada na agenda!");
-        // Limpa o formulário
+        Alert.alert("Sucesso", "Missão cadastrada no QG!");
         setTitulo('');
         setDescricao('');
         setData('');
         setHora('');
-        // Volta para a aba de Agenda para ver o item novo
         router.push('/agenda');
       }
     } catch (error) {
-      console.log(error);
-      Alert.alert("Erro", "Não foi possível salvar no servidor.");
+      Alert.alert("Erro", "Falha na comunicação com o QG.");
     }
   };
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.header}>Nova Atividade</Text>
-
-      <View style={styles.form}>
-        <Text style={styles.label}>Título da Atividade</Text>
-        <TextInput 
-          style={styles.input} 
-          placeholder="Ex: Reunião de Unidade" 
-          value={titulo}
-          onChangeText={setTitulo}
-        />
-
-        <Text style={styles.label}>Descrição</Text>
-        <TextInput 
-          style={[styles.input, styles.textArea]} 
-          placeholder="O que teremos hoje?" 
-          multiline 
-          numberOfLines={4}
-          value={descricao}
-          onChangeText={setDescricao}
-        />
-
-        <View style={styles.row}>
-          <View style={{ flex: 1, marginRight: 10 }}>
-            <Text style={styles.label}>Data (AAAA-MM-DD)</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="2024-05-20" 
-              value={data}
-              onChangeText={setData}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.label}>Hora (HH:MM)</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="14:00" 
-              value={hora}
-              onChangeText={setHora}
-            />
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.button} onPress={salvarEvento}>
-          <Ionicons name="checkmark-circle-outline" size={24} color="white" />
-          <Text style={styles.buttonText}>Salvar na Agenda</Text>
+    <View style={[styles.container, { backgroundColor: theme.bg }]}>
+      {/* Header Premium - Título elevado para otimizar espaço */}
+      <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={24} color="white" />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>NOVA MISSÃO</Text>
+      </LinearGradient>
+
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        <View style={styles.form}>
+          <InputLabel theme={theme} label="Título da Atividade" value={titulo} onChange={setTitulo} icon="document-text-outline" placeholder="Ex: Acampamento de Unidade" />
+          
+          <InputLabel 
+            theme={theme} 
+            label="Descrição" 
+            value={descricao} 
+            onChange={setDescricao} 
+            icon="chatbubble-ellipses-outline" 
+            placeholder="Detalhes da missão..." 
+            multiline 
+          />
+
+          <View style={styles.row}>
+            <View style={{ flex: 1.2, marginRight: 15 }}>
+              <InputLabel theme={theme} label="Data" value={data} onChange={setData} icon="calendar-outline" placeholder="AAAA-MM-DD" />
+            </View>
+            <View style={{ flex: 0.8 }}>
+              <InputLabel theme={theme} label="Hora" value={hora} onChange={setHora} icon="time-outline" placeholder="HH:MM" />
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.button} onPress={salvarEvento} activeOpacity={0.8}>
+            <LinearGradient 
+              colors={['#6b8e23', '#4a6318']} 
+              start={{ x: 0, y: 0 }} 
+              end={{ x: 1, y: 0 }} 
+              style={styles.gradientButton}
+            >
+              <Ionicons name="add-circle-outline" size={24} color="white" />
+              <Text style={styles.buttonText}>Cadastrar Missão</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+function InputLabel({ theme, label, value, onChange, icon, placeholder, multiline }: any) {
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={[styles.label, { color: theme.subText }]}>{label}</Text>
+      <View style={[styles.inputWrapper, { backgroundColor: theme.inputBg, alignItems: multiline ? 'flex-start' : 'center', paddingTop: multiline ? 15 : 0 }]}>
+        <Ionicons name={icon} size={20} color={theme.subText} style={styles.inputIcon} />
+        <TextInput 
+          style={[styles.input, { color: theme.text, height: multiline ? 100 : 'auto', textAlignVertical: multiline ? 'top' : 'center' }]}
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder}
+          placeholderTextColor={theme.subText + '70'}
+          multiline={multiline}
+        />
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 20 },
-  header: { fontSize: 26, fontWeight: 'bold', color: '#6b8e23', marginTop: 50, marginBottom: 20 },
+  container: { flex: 1 },
+  header: { 
+    height: 120, 
+    paddingTop: 45, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30
+  },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 12, marginRight: 15 },
+  headerTitle: { color: 'white', fontSize: 18, fontWeight: '900', letterSpacing: 2 },
+  scrollContent: { padding: 25 },
   form: { marginTop: 10 },
-  label: { fontSize: 14, fontWeight: 'bold', color: '#333', marginBottom: 5 },
-  input: { 
-    backgroundColor: '#F0F0F0', 
-    padding: 15, 
-    borderRadius: 10, 
-    marginBottom: 20,
-    fontSize: 16 
-  },
-  textArea: { height: 100, textAlignVertical: 'top' },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 13, marginBottom: 8, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  inputWrapper: { flexDirection: 'row', borderRadius: 18, paddingHorizontal: 15, elevation: 2 },
+  inputIcon: { marginRight: 12, marginTop: 2 },
+  input: { flex: 1, paddingVertical: 15, fontSize: 16, fontWeight: '500' },
   row: { flexDirection: 'row', justifyContent: 'space-between' },
-  button: { 
-    backgroundColor: '#6b8e23', 
-    flexDirection: 'row',
-    padding: 18, 
-    borderRadius: 12, 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    marginTop: 10,
-    elevation: 3
-  },
+  button: { marginTop: 20, borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#6b8e23', shadowOpacity: 0.3, shadowRadius: 10 },
+  gradientButton: { flexDirection: 'row', padding: 18, alignItems: 'center', justifyContent: 'center' },
   buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold', marginLeft: 10 }
 });
