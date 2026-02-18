@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useTheme } from './_layout'; // Importação do tema global
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from './_layout'; // Caminho corrigido para subir um nível
+
+const { width } = Dimensions.get('window');
 
 export default function AlterarSenhaScreen() {
   const router = useRouter();
@@ -11,10 +14,12 @@ export default function AlterarSenhaScreen() {
   const [novaSenha, setNovaSenha] = useState('');
 
   const theme = {
-    bg: isDarkMode ? '#121212' : '#F8F9FA',
-    card: isDarkMode ? '#1E1E1E' : '#FFFFFF',
-    text: isDarkMode ? '#FFFFFF' : '#333333',
-    input: isDarkMode ? '#2D2D2D' : '#F0F0F0'
+    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
+    card: isDarkMode ? '#1E293B' : '#FFFFFF',
+    text: isDarkMode ? '#F8FAFC' : '#1E293B',
+    subText: isDarkMode ? '#94A3B8' : '#64748B',
+    inputBg: isDarkMode ? '#2D3748' : '#F1F5F9',
+    accent: '#6b8e23',
   };
 
   const handleUpdatePassword = () => {
@@ -22,41 +27,83 @@ export default function AlterarSenhaScreen() {
       Alert.alert("Erro", "A nova senha deve ter pelo menos 6 caracteres.");
       return;
     }
-    // Aqui no futuro faremos a chamada para o seu IP .85
-    Alert.alert("Sucesso", "Senha alterada com sucesso!");
+    // No futuro integrando com o backend no IP .85
+    Alert.alert("Sucesso", "Sua senha foi atualizada no sistema!");
     router.back();
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-        <Ionicons name="arrow-back" size={28} color={theme.text} />
-      </TouchableOpacity>
+      {/* Header Premium - Título posicionado no topo */}
+      <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={26} color="white" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>SEGURANÇA</Text>
+        <View style={{ width: 40 }} /> 
+      </LinearGradient>
 
-      <Text style={[styles.title, { color: theme.text }]}>Alterar Senha</Text>
-      
-      {/* O erro sumiu porque agora 'form' existe no StyleSheet abaixo */}
-      <View style={styles.form}>
-        <Text style={[styles.label, { color: theme.text }]}>Senha Atual</Text>
+      <View style={styles.content}>
+        <View style={styles.introSection}>
+          <View style={[styles.iconCircle, { backgroundColor: theme.accent + '20' }]}>
+            <Ionicons name="lock-closed" size={32} color={theme.accent} />
+          </View>
+          <Text style={[styles.title, { color: theme.text }]}>Alterar sua Senha</Text>
+          <Text style={[styles.subtitle, { color: theme.subText }]}>
+            Mantenha sua conta protegida com uma senha forte.
+          </Text>
+        </View>
+
+        <View style={styles.form}>
+          <PasswordField 
+            theme={theme} 
+            label="Senha Atual" 
+            value={senhaAtual} 
+            onChange={setSenhaAtual} 
+          />
+          
+          <PasswordField 
+            theme={theme} 
+            label="Nova Senha" 
+            value={novaSenha} 
+            onChange={setNovaSenha} 
+          />
+
+          <TouchableOpacity style={styles.button} onPress={handleUpdatePassword} activeOpacity={0.8}>
+            <LinearGradient 
+              colors={['#6b8e23', '#4a6318']} 
+              start={{ x: 0, y: 0 }} 
+              end={{ x: 1, y: 0 }} 
+              style={styles.gradientButton}
+            >
+              <Text style={styles.buttonText}>Atualizar Senha</Text>
+              <Ionicons name="checkmark-circle" size={20} color="white" style={{ marginLeft: 10 }} />
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function PasswordField({ theme, label, value, onChange }: any) {
+  const [show, setShow] = useState(false);
+
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={[styles.label, { color: theme.subText }]}>{label}</Text>
+      <View style={[styles.inputWrapper, { backgroundColor: theme.inputBg }]}>
+        <Ionicons name="key-outline" size={20} color={theme.subText} style={styles.inputIcon} />
         <TextInput 
-          style={[styles.input, { backgroundColor: theme.input, color: theme.text }]}
-          secureTextEntry
-          placeholderTextColor="#888"
-          value={senhaAtual}
-          onChangeText={setSenhaAtual}
+          style={[styles.input, { color: theme.text }]}
+          secureTextEntry={!show}
+          placeholder="••••••••"
+          placeholderTextColor={theme.subText + '70'}
+          value={value}
+          onChangeText={onChange}
         />
-
-        <Text style={[styles.label, { color: theme.text, marginTop: 20 }]}>Nova Senha</Text>
-        <TextInput 
-          style={[styles.input, { backgroundColor: theme.input, color: theme.text }]}
-          secureTextEntry
-          placeholderTextColor="#888"
-          value={novaSenha}
-          onChangeText={setNovaSenha}
-        />
-
-        <TouchableOpacity style={styles.button} onPress={handleUpdatePassword}>
-          <Text style={styles.buttonText}>Atualizar Senha</Text>
+        <TouchableOpacity onPress={() => setShow(!show)}>
+          <Ionicons name={show ? "eye-off-outline" : "eye-outline"} size={20} color={theme.subText} />
         </TouchableOpacity>
       </View>
     </View>
@@ -64,12 +111,31 @@ export default function AlterarSenhaScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 25 },
-  backBtn: { marginTop: 40, marginBottom: 20 },
-  title: { fontSize: 28, fontWeight: 'bold', marginBottom: 30 },
-  form: { marginTop: 10 }, // ESSA LINHA CORRIGE O ERRO
-  label: { fontSize: 16, marginBottom: 8, fontWeight: '500' },
-  input: { padding: 15, borderRadius: 12, fontSize: 16 },
-  button: { backgroundColor: '#6b8e23', padding: 18, borderRadius: 12, alignItems: 'center', marginTop: 40 },
+  container: { flex: 1 },
+  header: { 
+    height: 120, 
+    paddingTop: 45, 
+    paddingHorizontal: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30
+  },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 12 },
+  headerTitle: { color: 'white', fontSize: 16, fontWeight: '900', letterSpacing: 1.5 },
+  content: { flex: 1, paddingHorizontal: 25 },
+  introSection: { alignItems: 'center', marginTop: 30, marginBottom: 20 },
+  iconCircle: { width: 70, height: 70, borderRadius: 35, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  title: { fontSize: 24, fontWeight: 'bold', marginBottom: 8 },
+  subtitle: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
+  form: { marginTop: 20 },
+  inputGroup: { marginBottom: 20 },
+  label: { fontSize: 13, marginBottom: 8, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, paddingHorizontal: 15 },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, paddingVertical: 15, fontSize: 16, fontWeight: '500' },
+  button: { marginTop: 30, borderRadius: 18, overflow: 'hidden', elevation: 5, shadowColor: '#6b8e23', shadowOpacity: 0.3, shadowRadius: 10 },
+  gradientButton: { flexDirection: 'row', padding: 18, alignItems: 'center', justifyContent: 'center' },
   buttonText: { color: 'white', fontWeight: 'bold', fontSize: 16 }
 });
