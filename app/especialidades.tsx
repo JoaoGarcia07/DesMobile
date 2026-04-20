@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Dimensions,
   FlatList,
+  Image,
   ImageBackground,
   RefreshControl,
   StyleSheet,
@@ -13,18 +14,28 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+
+import { clearSession, isUnauthorizedError } from '../api';
+import { createStudentTheme } from '../constants/tokens';
+import { normalizeAccentColor, resolveBackendIconName, specialtyStatusColor, specialtyStatusLabel, type SpecialtyProgressItem } from '../lib/desbravadores';
+import { dispatchStudentNotifications } from '../lib/notifications';
+import { readCachedOrFetchStudentBundle, syncStudentBundle, type StudentBundle } from '../lib/student-cache';
 import { useAppSync, useTheme } from './_layout';
-import api, { clearSession, isUnauthorizedError } from '../api';
-import {
-  type SpecialtyProgress,
-  type SpecialtyProgressItem,
-  normalizeAccentColor,
-  resolveBackendIconName,
-  specialtyStatusColor,
-  specialtyStatusLabel,
-} from '../lib/desbravadores';
 
 const { width } = Dimensions.get('window');
+
+function resolveIconSize(size?: number | null, fallback = 28) {
+  const parsed = Number(size);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return Math.max(18, Math.min(parsed, 72));
+}
+
+function getItems(bundle: StudentBundle | null) {
+  return bundle?.specialtiesProgress?.items || [];
+}
 
 export default function EspecialidadesScreen() {
   const router = useRouter();
@@ -32,28 +43,26 @@ export default function EspecialidadesScreen() {
   const { refreshVersion, isRefreshing, triggerRefresh } = useAppSync();
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState<SpecialtyProgress | null>(null);
+  const [bundle, setBundle] = useState<StudentBundle | null>(null);
 
-  const theme = {
-    overlay: isDarkMode ? 'rgba(15, 23, 42, 0.85)' : 'rgba(241, 245, 249, 0.9)',
-    card: isDarkMode ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-    text: isDarkMode ? '#F8FAFC' : '#1E293B',
-    subText: isDarkMode ? '#94A3B8' : '#64748B',
-    input: isDarkMode ? '#334155' : '#E2E8F0',
-  };
+  const theme = createStudentTheme(isDarkMode);
 
   useEffect(() => {
     let active = true;
 
     const loadSpecialties = async () => {
       try {
-        const response = await api.get<SpecialtyProgress>('/api/profile/me/specialties-progress');
+        const cachedBundle = await readCachedOrFetchStudentBundle({ notify: dispatchStudentNotifications });
 
-        if (!active) {
-          return;
+        if (active) {
+          setBundle(cachedBundle);
+          setLoading(false);
         }
 
-        setProgress(response.data);
+        const freshBundle = await syncStudentBundle({ notify: dispatchStudentNotifications });
+        if (active) {
+          setBundle(freshBundle);
+        }
       } catch (error) {
         if (isUnauthorizedError(error)) {
           await clearSession();
@@ -61,8 +70,6 @@ export default function EspecialidadesScreen() {
           return;
         }
 
-        console.log('Erro ao carregar especialidades:', error);
-      } finally {
         if (active) {
           setLoading(false);
         }
@@ -74,10 +81,11 @@ export default function EspecialidadesScreen() {
     return () => {
       active = false;
     };
-  }, [router, refreshVersion]);
+  }, [refreshVersion, router]);
 
+  const progress = bundle?.specialtiesProgress || null;
   const filteredItems = useMemo(() => {
-    const items = progress?.items || [];
+    const items = getItems(bundle);
     const query = search.trim().toLowerCase();
 
     if (!query) {
@@ -89,27 +97,26 @@ export default function EspecialidadesScreen() {
       const area = item.area.toLowerCase();
       return name.includes(query) || area.includes(query);
     });
-  }, [progress?.items, search]);
+  }, [bundle, search]);
 
   const renderCard = ({ item }: { item: SpecialtyProgressItem }) => {
     const accentColor = normalizeAccentColor(item.accentColor, specialtyStatusColor(item.status));
     const iconName = resolveBackendIconName(item.iconName, 'ribbon');
+    const iconSize = resolveIconSize(item.iconSize);
 
     return (
       <TouchableOpacity style={[styles.card, { backgroundColor: theme.card }]} activeOpacity={0.9}>
         <View style={[styles.iconCircle, { backgroundColor: `${accentColor}20` }]}>
-          <Ionicons name={iconName} size={28} color={accentColor} />
+          {item.iconImageUrlResolved ? (
+            <Image source={{ uri: item.iconImageUrlResolved }} style={{ width: iconSize, height: iconSize, borderRadius: 12 }} resizeMode="contain" />
+          ) : (
+            <Ionicons name={iconName} size={iconSize} color={accentColor} />
+          )}
         </View>
-        <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>
-          {item.name}
-        </Text>
-        <Text style={[styles.cardArea, { color: theme.subText }]} numberOfLines={1}>
-          {item.area}
-        </Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.cardArea, { color: theme.subText }]} numberOfLines={1}>{item.area}</Text>
         <View style={[styles.statusBadge, { backgroundColor: `${specialtyStatusColor(item.status)}20` }]}>
-          <Text style={[styles.statusText, { color: specialtyStatusColor(item.status) }]}>
-            {specialtyStatusLabel(item.status)}
-          </Text>
+          <Text style={[styles.statusText, { color: specialtyStatusColor(item.status) }]}>{specialtyStatusLabel(item.status)}</Text>
         </View>
       </TouchableOpacity>
     );
@@ -146,7 +153,7 @@ export default function EspecialidadesScreen() {
 
         {loading ? (
           <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#6b8e23" />
+            <ActivityIndicator size="large" color={theme.accent} />
           </View>
         ) : (
           <FlatList
@@ -155,7 +162,7 @@ export default function EspecialidadesScreen() {
             keyExtractor={(item) => String(item.id)}
             columnWrapperStyle={styles.row}
             contentContainerStyle={styles.list}
-            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={triggerRefresh} tintColor="#6b8e23" />}
+            refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={triggerRefresh} tintColor={theme.accent} />}
             renderItem={renderCard}
             ListEmptyComponent={
               <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
@@ -185,7 +192,7 @@ const styles = StyleSheet.create({
   row: { justifyContent: 'space-around', paddingHorizontal: 10 },
   list: { paddingBottom: 50, flexGrow: 1 },
   card: { width: (width - 60) / 2, padding: 18, borderRadius: 25, marginBottom: 15, alignItems: 'center', elevation: 8, shadowColor: '#000', shadowOpacity: 0.2 },
-  iconCircle: { width: 60, height: 60, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  iconCircle: { width: 72, height: 72, borderRadius: 22, justifyContent: 'center', alignItems: 'center', marginBottom: 12, overflow: 'hidden' },
   cardTitle: { fontSize: 15, fontWeight: '800', textAlign: 'center' },
   cardArea: { fontSize: 11, fontWeight: '600', marginTop: 4, textAlign: 'center' },
   statusBadge: { marginTop: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 999 },

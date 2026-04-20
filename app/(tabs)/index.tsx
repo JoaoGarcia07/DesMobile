@@ -14,19 +14,17 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import api, { clearSession, isUnauthorizedError } from '../../api';
-import { useAppSync, useTheme } from '../_layout';
+
+import { clearSession, isUnauthorizedError } from '../../api';
 import { SyncNowButton } from '../../components/SyncNowButton';
-import { getFullName, GroupDetails, ProfilePayload, XpSummary } from '../../lib/desbravadores';
+import { createStudentTheme } from '../../constants/tokens';
+import { getFullName } from '../../lib/desbravadores';
+import { dispatchStudentNotifications } from '../../lib/notifications';
+import { describeBundleTimestamp, readCachedOrFetchStudentBundle, readStudentNotifications, syncStudentBundle, type StudentBundle } from '../../lib/student-cache';
+import { calculateLevelProgress } from '../../lib/student-events';
+import { useAppSync, useTheme } from '../_layout';
 
 const { width } = Dimensions.get('window');
-
-type TaskItem = {
-  id: number;
-  title?: string | null;
-  date?: string | null;
-  time?: string | null;
-};
 
 type HomeState = {
   desbravador: string;
@@ -39,7 +37,8 @@ type HomeState = {
   xpForNextLevel: number;
   xpToNextLevel: number;
   membros: number;
-  proximaMissao: TaskItem | null;
+  proximaMissao: { id: number; title?: string | null; date?: string | null; time?: string | null } | null;
+  lastSync: string;
 };
 
 const initialState: HomeState = {
@@ -54,7 +53,34 @@ const initialState: HomeState = {
   xpToNextLevel: 100,
   membros: 0,
   proximaMissao: null,
+  lastSync: 'sem sincronizacao',
 };
+
+function toHomeState(bundle: StudentBundle | null): HomeState {
+  if (!bundle) {
+    return initialState;
+  }
+
+  const profile = bundle.profile;
+  const xpSummary = bundle.xpSummary;
+  const group = bundle.groupDetails;
+  const tasks = bundle.tasks || [];
+
+  return {
+    desbravador: getFullName(profile),
+    unidade: group?.group?.name || profile?.group?.name || 'Sem unidade atribuida',
+    atividadesPendentes: tasks.length,
+    groupTotalXp: group?.totalXp || xpSummary?.totalXp || profile?.totalXp || 0,
+    personalTotalXp: xpSummary?.totalXp || profile?.totalXp || 0,
+    level: xpSummary?.level || profile?.level || 1,
+    currentXp: xpSummary?.currentXp || profile?.xp || 0,
+    xpForNextLevel: xpSummary?.xpForNextLevel || 100,
+    xpToNextLevel: xpSummary?.xpToNextLevel || 100,
+    membros: group?.members?.length || 0,
+    proximaMissao: tasks[0] || null,
+    lastSync: describeBundleTimestamp(bundle),
+  };
+}
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -62,65 +88,40 @@ export default function HomeScreen() {
   const { refreshVersion, triggerRefresh, isRefreshing } = useAppSync();
   const [loading, setLoading] = useState(true);
   const [info, setInfo] = useState<HomeState>(initialState);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-  const theme = {
-    bg: isDarkMode ? '#0F172A' : '#F8FAFC',
-    text: isDarkMode ? '#F8FAFC' : '#1E293B',
-    card: isDarkMode ? '#1E293B' : '#FFFFFF',
-    subText: isDarkMode ? '#94A3B8' : '#64748B',
-    accent: '#6b8e23',
-  };
+  const theme = createStudentTheme(isDarkMode);
 
   useEffect(() => {
     let active = true;
 
     const loadHome = async () => {
       try {
-        const now = new Date();
-        const [profileResponse, xpResponse, groupResponse, tasksResponse] = await Promise.all([
-          api.get<ProfilePayload>('/api/profile/me'),
-          api.get<XpSummary>('/api/profile/me/xp'),
-          api.get<GroupDetails>('/api/groups/me').catch((error) => {
-            if (error?.response?.status === 404) {
-              return { data: null };
-            }
+        const cachedBundle = await readCachedOrFetchStudentBundle({ notify: dispatchStudentNotifications });
+        const notifications = await readStudentNotifications();
 
-            throw error;
-          }),
-          api.get(`/api/tasks?year=${now.getFullYear()}&month=${now.getMonth() + 1}&size=10&sort=date,asc&sort=time,asc`),
-        ]);
+        if (active) {
+          setInfo(toHomeState(cachedBundle));
+          setUnreadCount(notifications.filter((item) => !item.read).length);
+          setLoading(false);
+        }
+
+        const freshBundle = await syncStudentBundle({ notify: dispatchStudentNotifications });
+        const nextNotifications = await readStudentNotifications();
 
         if (!active) {
           return;
         }
 
-        const profile = profileResponse.data || {};
-        const xpSummary = xpResponse.data;
-        const groupPayload = groupResponse.data;
-        const tasks = tasksResponse.data?.content || [];
-        const fullName = getFullName(profile);
-
-        setInfo({
-          desbravador: fullName,
-          unidade: groupPayload?.group?.name || profile.group?.name || 'Sem unidade atribuida',
-          atividadesPendentes: tasks.length,
-          groupTotalXp: groupPayload?.totalXp || xpSummary?.totalXp || profile.totalXp || 0,
-          personalTotalXp: xpSummary?.totalXp || profile.totalXp || 0,
-          level: xpSummary?.level || profile.level || 1,
-          currentXp: xpSummary?.currentXp || profile.xp || 0,
-          xpForNextLevel: xpSummary?.xpForNextLevel || 100,
-          xpToNextLevel: xpSummary?.xpToNextLevel || 100,
-          membros: groupPayload?.members?.length || 0,
-          proximaMissao: tasks[0] || null,
-        });
+        setInfo(toHomeState(freshBundle));
+        setUnreadCount(nextNotifications.filter((item) => !item.read).length);
       } catch (error) {
-        console.log('Erro na Home:', error);
-
         if (isUnauthorizedError(error)) {
           await clearSession();
           router.replace('/');
+          return;
         }
-      } finally {
+
         if (active) {
           setLoading(false);
         }
@@ -132,7 +133,7 @@ export default function HomeScreen() {
     return () => {
       active = false;
     };
-  }, [router, refreshVersion]);
+  }, [refreshVersion, router]);
 
   if (loading) {
     return (
@@ -143,12 +144,9 @@ export default function HomeScreen() {
   }
 
   const nextMissionText = info.proximaMissao
-    ? `${info.proximaMissao.date} as ${String(info.proximaMissao.time || '').slice(0, 5)}`
+    ? `${info.proximaMissao.date || 'sem data'} as ${String(info.proximaMissao.time || '').slice(0, 5) || '--:--'}`
     : 'Nenhuma missao agendada para este mes';
-
-  const levelProgressPercent = info.xpForNextLevel > 0
-    ? Math.min(100, Math.max(6, (info.currentXp / info.xpForNextLevel) * 100))
-    : 0;
+  const levelProgressPercent = Math.max(6, calculateLevelProgress(info.currentXp, info.xpForNextLevel));
 
   return (
     <ScrollView
@@ -160,7 +158,7 @@ export default function HomeScreen() {
         source={{ uri: 'https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?q=80&w=1000' }}
         style={styles.headerImage}
       >
-        <LinearGradient colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.7)']} style={styles.overlay}>
+        <LinearGradient colors={['rgba(0,0,0,0.15)', 'rgba(0,0,0,0.7)']} style={styles.overlay}>
           <View style={styles.searchWrapper}>
             <Ionicons name="search" size={20} color="#AAA" style={styles.searchIcon} />
             <TextInput placeholder="Pesquisar atividades..." placeholderTextColor="#AAA" style={styles.searchInput} />
@@ -170,14 +168,21 @@ export default function HomeScreen() {
 
       <View style={styles.content}>
         <View style={styles.welcomeRow}>
-          <Text style={[styles.welcomeText, { color: theme.text }]}>Ola, {info.desbravador.split(' ')[0]}!</Text>
-          <SyncNowButton
-            label="Atualizar"
-            onPress={triggerRefresh}
-            loading={isRefreshing}
-            accentColor={theme.accent}
-            style={styles.syncButton}
-          />
+          <View style={styles.welcomeCopy}>
+            <Text style={[styles.welcomeText, { color: theme.text }]}>Ola, {info.desbravador.split(' ')[0]}!</Text>
+            <Text style={[styles.lastSyncText, { color: theme.subText }]}>Ultima sincronizacao: {info.lastSync}</Text>
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={[styles.notificationButton, { backgroundColor: theme.card }]} onPress={() => router.push('/notificacoes' as any)}>
+              <Ionicons name="notifications-outline" size={20} color={theme.text} />
+              {unreadCount > 0 ? (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>{Math.min(unreadCount, 9)}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+            <SyncNowButton label="Atualizar" onPress={triggerRefresh} loading={isRefreshing} accentColor={theme.accent} style={styles.syncButton} />
+          </View>
         </View>
 
         <TouchableOpacity style={styles.mainCardShadow} activeOpacity={0.9} onPress={() => router.push('/unidade-aguia' as any)}>
@@ -203,10 +208,10 @@ export default function HomeScreen() {
               <Text style={styles.progressKicker}>SUA TRILHA</Text>
               <Text style={styles.progressTitle}>Nivel {info.level}</Text>
             </View>
-            <View style={styles.totalXpBadge}>
+            <TouchableOpacity style={styles.totalXpBadge} onPress={() => router.push('/xp' as any)}>
               <Text style={styles.totalXpValue}>{info.personalTotalXp}</Text>
               <Text style={styles.totalXpLabel}>XP total</Text>
-            </View>
+            </TouchableOpacity>
           </View>
           <View style={styles.levelBarTrack}>
             <View style={[styles.levelBarFill, { width: `${levelProgressPercent}%` }]} />
@@ -220,9 +225,7 @@ export default function HomeScreen() {
         <View style={[styles.missionCard, { backgroundColor: theme.card }]}>
           <View style={{ flex: 1 }}>
             <Text style={[styles.missionLabel, { color: theme.subText }]}>PROXIMA MISSAO</Text>
-            <Text style={[styles.missionTitle, { color: theme.text }]}>
-              {info.proximaMissao?.title || 'Calendario em dia'}
-            </Text>
+            <Text style={[styles.missionTitle, { color: theme.text }]}>{info.proximaMissao?.title || 'Calendario em dia'}</Text>
             <Text style={[styles.missionSub, { color: theme.subText }]}>{nextMissionText}</Text>
           </View>
           <View style={styles.pendingBadge}>
@@ -232,13 +235,7 @@ export default function HomeScreen() {
 
         <View style={styles.grid}>
           <ShortcutCard title="Unidade" icon="people" color="#FF9F43" onPress={() => router.push('/unidade' as any)} theme={theme} />
-          <ShortcutCard
-            title="Especialidades"
-            icon="ribbon"
-            color="#00D2D3"
-            onPress={() => router.push('/especialidades' as any)}
-            theme={theme}
-          />
+          <ShortcutCard title="Especialidades" icon="ribbon" color="#00D2D3" onPress={() => router.push('/especialidades' as any)} theme={theme} />
           <ShortcutCard title="Agenda" icon="calendar" color="#54A0FF" onPress={() => router.push('/agenda' as any)} theme={theme} />
           <ShortcutCard title="Requisitos" icon="list" color="#10AC84" onPress={() => router.push('/requisitos' as any)} theme={theme} />
         </View>
@@ -266,25 +263,15 @@ const styles = StyleSheet.create({
   searchWrapper: { backgroundColor: 'white', flexDirection: 'row', alignItems: 'center', borderRadius: 15, paddingHorizontal: 15, height: 50, elevation: 5 },
   searchIcon: { marginRight: 10 },
   searchInput: { flex: 1, color: '#333', fontSize: 16 },
-  content: {
-    padding: 20,
-    marginTop: 10,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-  },
-  welcomeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-    marginTop: 5,
-  },
-  welcomeText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    flex: 1,
-    marginRight: 12,
-  },
+  content: { padding: 20, marginTop: 10, borderTopLeftRadius: 30, borderTopRightRadius: 30 },
+  welcomeRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, marginTop: 5 },
+  welcomeCopy: { flex: 1, marginRight: 12 },
+  welcomeText: { fontSize: 24, fontWeight: 'bold' },
+  lastSyncText: { marginTop: 4, fontSize: 12, fontWeight: '600' },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  notificationButton: { width: 42, height: 42, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  notificationBadge: { position: 'absolute', top: 5, right: 5, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 4 },
+  notificationBadgeText: { color: 'white', fontSize: 10, fontWeight: '900' },
   syncButton: { minWidth: 112 },
   mainCardShadow: { borderRadius: 25, elevation: 8, marginBottom: 16 },
   mainCardGradient: { padding: 20, borderRadius: 25, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
@@ -292,71 +279,17 @@ const styles = StyleSheet.create({
   shieldCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   mainCardTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
   mainCardSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
-  progressCard: {
-    borderRadius: 24,
-    padding: 18,
-    marginBottom: 18,
-    elevation: 4,
-  },
-  progressCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  progressKicker: {
-    color: 'rgba(255,255,255,0.72)',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  progressTitle: {
-    color: 'white',
-    fontSize: 22,
-    fontWeight: '800',
-    marginTop: 6,
-  },
-  totalXpBadge: {
-    borderRadius: 18,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    minWidth: 92,
-    alignItems: 'center',
-  },
-  totalXpValue: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  totalXpLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  levelBarTrack: {
-    height: 12,
-    borderRadius: 999,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    overflow: 'hidden',
-  },
-  levelBarFill: {
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: '#FFD84D',
-  },
-  levelMetaRow: {
-    marginTop: 10,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  levelMetaText: {
-    color: 'rgba(255,255,255,0.82)',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+  progressCard: { borderRadius: 24, padding: 18, marginBottom: 18, elevation: 4 },
+  progressCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
+  progressKicker: { color: 'rgba(255,255,255,0.72)', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  progressTitle: { color: 'white', fontSize: 22, fontWeight: '800', marginTop: 6 },
+  totalXpBadge: { borderRadius: 18, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.14)', minWidth: 92, alignItems: 'center' },
+  totalXpValue: { color: 'white', fontSize: 18, fontWeight: '900' },
+  totalXpLabel: { color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: '700', marginTop: 3 },
+  levelBarTrack: { height: 12, borderRadius: 999, backgroundColor: 'rgba(255,255,255,0.18)', overflow: 'hidden' },
+  levelBarFill: { height: '100%', borderRadius: 999, backgroundColor: '#FFD84D' },
+  levelMetaRow: { marginTop: 10, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  levelMetaText: { color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: '700' },
   missionCard: { borderRadius: 22, padding: 18, flexDirection: 'row', alignItems: 'center', marginBottom: 20, elevation: 3 },
   missionLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   missionTitle: { fontSize: 17, fontWeight: 'bold', marginTop: 6 },

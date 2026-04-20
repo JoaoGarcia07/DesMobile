@@ -53,6 +53,7 @@ export type RequirementProgressItem = {
   description: string;
   iconName?: string | null;
   iconImageUrl?: string | null;
+  iconImageUrlResolved?: string | null;
   iconSize?: number | null;
   displayOrder: number;
   completed: boolean;
@@ -77,17 +78,32 @@ export type SpecialtyProgressItem = {
   description: string;
   iconName?: string | null;
   iconImageUrl?: string | null;
+  iconImageUrlResolved?: string | null;
   iconSize?: number | null;
   accentColor?: string | null;
   status: SpecialtyStatus;
   updatedAt?: string | null;
 };
 
+export type PasswordResetStatusDTO = {
+  status?: string | null;
+  requestedAt?: string | null;
+  approvedAt?: string | null;
+  expiresAt?: string | null;
+  completedAt?: string | null;
+};
+
+export type XpSourceType =
+  | 'ACHIEVEMENT_GRANTED'
+  | 'ACHIEVEMENT_REVOKED'
+  | 'ADMIN_ADJUSTMENT'
+  | string;
+
 export type XpHistoryItem = {
   id: number;
   amount: number;
   reason: string;
-  sourceType?: string | null;
+  sourceType?: XpSourceType | null;
   referenceType?: string | null;
   referenceId?: number | null;
   referenceLabel?: string | null;
@@ -388,4 +404,9 @@ export function translateXpSource(sourceType?: string | null) {
     default:
       return 'Movimentacao';
   }
+}
+
+export function normalizeXpSource(sourceType?: string | null) {
+  const normalized = String(sourceType || '').trim().toUpperCase();
+  return normalized || 'ALL';
 }
