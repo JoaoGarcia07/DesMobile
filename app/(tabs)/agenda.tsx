@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { useTheme } from '../_layout'; 
+import { useAppSync, useTheme } from '../_layout'; 
+import api, { clearSession, isUnauthorizedError } from '../../api';
 
-// Configuração do calendário para Português
 LocaleConfig.locales['pt-br'] = {
   monthNames: ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'],
   monthNamesShort: ['Jan.','Fev.','Mar','Abr','Mai','Jun','Jul.','Ago','Set.','Out.','Nov.','Dez.'],
@@ -19,7 +19,12 @@ LocaleConfig.defaultLocale = 'pt-br';
 export default function AgendaScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
-  const [selectedDate, setSelectedDate] = useState('');
+  const { refreshVersion, isRefreshing, triggerRefresh } = useAppSync();
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(today.toISOString().slice(0, 10));
+  const [currentMonth, setCurrentMonth] = useState({ year: today.getFullYear(), month: today.getMonth() + 1 });
+  const [loading, setLoading] = useState(true);
+  const [eventos, setEventos] = useState<any[]>([]);
 
   const theme = {
     bg: isDarkMode ? '#0F172A' : '#F8FAFC',
@@ -30,16 +35,78 @@ export default function AgendaScreen() {
     calendarText: isDarkMode ? '#FFFFFF' : '#2d4150',
   };
 
-  // Dados dos Eventos (Datas no formato YYYY-MM-DD)
-  const eventos = [
-    { id: '1', titulo: 'Acampamento Regional', data: '2026-02-20', hora: '08:00', xp: '500', cor: '#2ED573', tipo: 'Aventura', icon: 'bonfire' },
-    { id: '2', titulo: 'Reunião de Unidade', data: '2026-02-22', hora: '14:30', xp: '100', cor: '#1E90FF', tipo: 'Treino', icon: 'people' },
-    { id: '3', titulo: 'Investidura Especial', data: '2026-02-28', hora: '19:00', xp: '300', cor: '#FFA502', tipo: 'Conquista', icon: 'trophy' },
-  ];
+  useEffect(() => {
+    let active = true;
+
+    const loadTasks = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(
+          `/api/tasks?year=${currentMonth.year}&month=${currentMonth.month}&size=50&sort=date,asc&sort=time,asc`
+        );
+
+        if (!active) {
+          return;
+        }
+
+        setEventos(response.data?.content || []);
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          await clearSession();
+          router.replace('/');
+          return;
+        }
+
+        console.log('Erro ao carregar agenda:', error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadTasks();
+
+    return () => {
+      active = false;
+    };
+  }, [currentMonth, router, refreshVersion]);
+
+  const markedDates = useMemo(() => {
+    const palette = ['#2ED573', '#1E90FF', '#FFA502', '#6b8e23'];
+
+    const marks = eventos.reduce((acc: any, item: any, index: number) => {
+      if (!item.date) {
+        return acc;
+      }
+
+      acc[item.date] = {
+        ...(acc[item.date] || {}),
+        marked: true,
+        dotColor: palette[index % palette.length],
+      };
+
+      return acc;
+    }, {});
+
+    marks[selectedDate] = {
+      ...(marks[selectedDate] || {}),
+      selected: true,
+      disableTouchEvent: true,
+      selectedColor: theme.accent,
+    };
+
+    return marks;
+  }, [eventos, selectedDate, theme.accent]);
+
+  const filteredEventos = selectedDate
+    ? eventos.filter((item: any) => item.date === selectedDate)
+    : eventos;
+
+  const emptyState = !loading && filteredEventos.length === 0;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Header Estilizado */}
       <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color="white" />
@@ -47,16 +114,11 @@ export default function AgendaScreen() {
         <Text style={styles.headerTitle}>             AGENDA            </Text>
       </LinearGradient>
 
-      {/* Seção do Calendário */}
       <View style={[styles.calendarWrapper, { backgroundColor: theme.card }]}>
         <Calendar
           onDayPress={day => setSelectedDate(day.dateString)}
-          markedDates={{
-            [selectedDate]: { selected: true, disableTouchEvent: true, selectedColor: theme.accent },
-            '2026-02-20': { marked: true, dotColor: '#2ED573' },
-            '2026-02-22': { marked: true, dotColor: '#1E90FF' },
-            '2026-02-28': { marked: true, dotColor: '#FFA502' },
-          }}
+          onMonthChange={(date) => setCurrentMonth({ year: date.year, month: date.month })}
+          markedDates={markedDates}
           theme={{
             backgroundColor: 'transparent',
             calendarBackground: 'transparent',
@@ -79,37 +141,65 @@ export default function AgendaScreen() {
       <View style={styles.listHeader}>
         <Text style={[styles.listTitle, { color: theme.text }]}>Eventos Agendados</Text>
         <View style={styles.xpTotalBadge}>
-          <Text style={styles.xpTotalText}>900 XP em Jogo</Text>
+          <Text style={styles.xpTotalText}>{eventos.length} missão(ões)</Text>
         </View>
       </View>
 
-      <FlatList
-        data={eventos}
-        keyExtractor={item => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={[styles.eventCard, { backgroundColor: theme.card }]}>
-            <LinearGradient colors={[item.cor, item.cor + '99']} style={styles.typeIndicator} />
-            
-            <View style={styles.cardContent}>
-              <View style={styles.infoWrapper}>
-                <View style={styles.titleRow}>
-                  <Ionicons name={item.icon as any} size={18} color={item.cor} style={{marginRight: 8}} />
-                  <Text style={[styles.eventTitle, { color: theme.text }]}>{item.titulo}</Text>
-                </View>
-                <Text style={[styles.eventSub, { color: theme.subText }]}>
-                  {item.data.split('-')[2]} de Fevereiro • {item.hora}
-                </Text>
-              </View>
+      {loading ? (
+        <View style={styles.loaderArea}>
+          <ActivityIndicator size="large" color={theme.accent} />
+        </View>
+      ) : emptyState ? (
+        <ScrollView
+          contentContainerStyle={styles.emptyArea}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={triggerRefresh} tintColor={theme.accent} />}
+        >
+          <Ionicons name="calendar-clear-outline" size={42} color={theme.subText} />
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>Nenhuma atividade nesse dia</Text>
+          <Text style={[styles.emptyText, { color: theme.subText }]}>
+            Selecione outra data ou confira o calendário do mês.
+          </Text>
+        </ScrollView>
+      ) : (
+        <FlatList
+          data={filteredEventos}
+          keyExtractor={(item: any) => String(item.id)}
+          contentContainerStyle={styles.list}
+          refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={triggerRefresh} tintColor={theme.accent} />}
+          renderItem={({ item, index }) => {
+            const colors = ['#2ED573', '#1E90FF', '#FFA502', '#6b8e23'];
+            const accentColor = colors[index % colors.length];
 
-              <LinearGradient colors={[item.cor + '15', item.cor + '30']} style={styles.xpBadge}>
-                <Text style={[styles.xpValue, { color: item.cor }]}>+{item.xp}</Text>
-                <Text style={[styles.xpLabel, { color: item.cor }]}>XP</Text>
-              </LinearGradient>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+            return (
+              <TouchableOpacity style={[styles.eventCard, { backgroundColor: theme.card }]}>
+                <LinearGradient colors={[accentColor, `${accentColor}99`]} style={styles.typeIndicator} />
+                
+                <View style={styles.cardContent}>
+                  <View style={styles.infoWrapper}>
+                    <View style={styles.titleRow}>
+                      <Ionicons name="calendar" size={18} color={accentColor} style={{marginRight: 8}} />
+                      <Text style={[styles.eventTitle, { color: theme.text }]}>{item.title}</Text>
+                    </View>
+                    <Text style={[styles.eventSub, { color: theme.subText }]}>
+                      {item.date} • {String(item.time || '').slice(0, 5)}
+                    </Text>
+                    {item.description ? (
+                      <Text style={[styles.eventDescription, { color: theme.subText }]} numberOfLines={2}>
+                        {item.description}
+                      </Text>
+                    ) : null}
+                  </View>
+
+                  <LinearGradient colors={[`${accentColor}15`, `${accentColor}30`]} style={styles.xpBadge}>
+                    <Text style={[styles.xpValue, { color: accentColor }]}>{String(item.time || '').slice(0, 5) || '--:--'}</Text>
+                    <Text style={[styles.xpLabel, { color: accentColor }]}>Hora</Text>
+                  </LinearGradient>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
+        />
+      )}
     </View>
   );
 }
@@ -117,8 +207,8 @@ export default function AgendaScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { 
-    height: 140, // Você pode aumentar para 150 se quiser mais espaço
-    paddingTop: 20, // Diminuímos aqui para o texto subir
+    height: 140,
+    paddingTop: 20,
     paddingHorizontal: 20, 
     flexDirection: 'row', 
     alignItems: 'center',
@@ -156,8 +246,9 @@ const styles = StyleSheet.create({
   titleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   eventTitle: { fontSize: 15, fontWeight: 'bold' },
   eventSub: { fontSize: 12, fontWeight: '600' },
+  eventDescription: { fontSize: 12, marginTop: 6 },
   xpBadge: { 
-    width: 52, 
+    width: 60, 
     height: 52, 
     borderRadius: 16, 
     justifyContent: 'center', 
@@ -166,5 +257,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.05)'
   },
   xpValue: { fontSize: 14, fontWeight: '900' },
-  xpLabel: { fontSize: 8, fontWeight: '900' }
+  xpLabel: { fontSize: 8, fontWeight: '900' },
+  loaderArea: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyArea: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30 },
+  emptyTitle: { fontSize: 18, fontWeight: 'bold', marginTop: 12 },
+  emptyText: { textAlign: 'center', marginTop: 8, lineHeight: 20 }
 });

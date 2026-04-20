@@ -77,8 +77,8 @@ export default function SobreScreen() {
           <View style={styles.techGrid}>
             <View style={styles.tag}><Text style={styles.tagText}>React Native</Text></View>
             <View style={styles.tag}><Text style={styles.tagText}>Expo</Text></View>
-            <View style={styles.tag}><Text style={styles.tagText}>SQLite</Text></View>
-            <View style={styles.tag}><Text style={styles.tagText}>Node.js</Text></View>
+            <View style={styles.tag}><Text style={styles.tagText}>Spring Boot</Text></View>
+            <View style={styles.tag}><Text style={styles.tagText}>MySQL</Text></View>
           </View>
         </View>
       </View>

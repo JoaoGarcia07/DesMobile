@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from './_layout'; // Caminho corrigido para subir um nível
-
-const { width } = Dimensions.get('window');
+import { useTheme } from './_layout';
+import api, { clearSession, isUnauthorizedError } from '../api';
 
 export default function AlterarSenhaScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
+  const [confirmacao, setConfirmacao] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const theme = {
     bg: isDarkMode ? '#0F172A' : '#F8FAFC',
@@ -22,19 +23,47 @@ export default function AlterarSenhaScreen() {
     accent: '#6b8e23',
   };
 
-  const handleUpdatePassword = () => {
-    if (novaSenha.length < 6) {
-      Alert.alert("Erro", "A nova senha deve ter pelo menos 6 caracteres.");
+  const handleUpdatePassword = async () => {
+    if (!senhaAtual || !novaSenha || !confirmacao) {
+      Alert.alert("Erro", "Preencha todos os campos.");
       return;
     }
-    // No futuro integrando com o backend no IP .85
-    Alert.alert("Sucesso", "Sua senha foi atualizada no sistema!");
-    router.back();
+
+    if (novaSenha !== confirmacao) {
+      Alert.alert("Erro", "A confirmação da senha não confere.");
+      return;
+    }
+
+    if (novaSenha.length < 8) {
+      Alert.alert("Erro", "A nova senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+
+    try {
+      setSaving(true);
+      await api.post('/api/profile/me/change-password', {
+        currentPassword: senhaAtual,
+        newPassword: novaSenha,
+      });
+
+      Alert.alert("Sucesso", "Sua senha foi atualizada no sistema.");
+      router.back();
+    } catch (error: any) {
+      if (isUnauthorizedError(error)) {
+        await clearSession();
+        router.replace('/');
+        return;
+      }
+
+      const message = error?.response?.data || "Não foi possível atualizar a senha.";
+      Alert.alert("Erro", message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Header Premium - Título posicionado no topo */}
       <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={26} color="white" />
@@ -45,7 +74,7 @@ export default function AlterarSenhaScreen() {
 
       <View style={styles.content}>
         <View style={styles.introSection}>
-          <View style={[styles.iconCircle, { backgroundColor: theme.accent + '20' }]}>
+          <View style={[styles.iconCircle, { backgroundColor: `${theme.accent}20` }]}>
             <Ionicons name="lock-closed" size={32} color={theme.accent} />
           </View>
           <Text style={[styles.title, { color: theme.text }]}>Alterar sua Senha</Text>
@@ -55,28 +84,18 @@ export default function AlterarSenhaScreen() {
         </View>
 
         <View style={styles.form}>
-          <PasswordField 
-            theme={theme} 
-            label="Senha Atual" 
-            value={senhaAtual} 
-            onChange={setSenhaAtual} 
-          />
-          
-          <PasswordField 
-            theme={theme} 
-            label="Nova Senha" 
-            value={novaSenha} 
-            onChange={setNovaSenha} 
-          />
+          <PasswordField theme={theme} label="Senha Atual" value={senhaAtual} onChange={setSenhaAtual} />
+          <PasswordField theme={theme} label="Nova Senha" value={novaSenha} onChange={setNovaSenha} />
+          <PasswordField theme={theme} label="Confirmar Nova Senha" value={confirmacao} onChange={setConfirmacao} />
 
-          <TouchableOpacity style={styles.button} onPress={handleUpdatePassword} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.button, saving && { opacity: 0.8 }]} onPress={handleUpdatePassword} activeOpacity={0.8} disabled={saving}>
             <LinearGradient 
               colors={['#6b8e23', '#4a6318']} 
               start={{ x: 0, y: 0 }} 
               end={{ x: 1, y: 0 }} 
               style={styles.gradientButton}
             >
-              <Text style={styles.buttonText}>Atualizar Senha</Text>
+              <Text style={styles.buttonText}>{saving ? 'Atualizando...' : 'Atualizar Senha'}</Text>
               <Ionicons name="checkmark-circle" size={20} color="white" style={{ marginLeft: 10 }} />
             </LinearGradient>
           </TouchableOpacity>
@@ -98,7 +117,7 @@ function PasswordField({ theme, label, value, onChange }: any) {
           style={[styles.input, { color: theme.text }]}
           secureTextEntry={!show}
           placeholder="••••••••"
-          placeholderTextColor={theme.subText + '70'}
+          placeholderTextColor={`${theme.subText}70`}
           value={value}
           onChangeText={onChange}
         />

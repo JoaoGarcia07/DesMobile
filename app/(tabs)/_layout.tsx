@@ -1,11 +1,43 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { Tabs, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { View, StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useTheme } from '../_layout'; 
+import { restoreSession } from '../../api';
 
 export default function TabLayout() {
   const { isDarkMode } = useTheme();
+  const router = useRouter();
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+
+    restoreSession().then((token) => {
+      if (!active) {
+        return;
+      }
+
+      if (!token) {
+        router.replace('/');
+        return;
+      }
+
+      setCheckingSession(false);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  if (checkingSession) {
+    return (
+      <View style={[styles.loadingContainer, { backgroundColor: isDarkMode ? '#0F172A' : '#F8FAFC' }]}>
+        <ActivityIndicator size="large" color="#6b8e23" />
+      </View>
+    );
+  }
 
   return (
     <Tabs
@@ -36,7 +68,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* BOTÃO CENTRAL VINCULADO À CHAMADA */}
       <Tabs.Screen
         name="chamada" 
         options={{
@@ -65,13 +96,13 @@ export default function TabLayout() {
         }}
       />
 
-      {/* REMOVE ABAS EXTRAS DO MENU VISUAL */}
       <Tabs.Screen name="adicionar" options={{ href: null }} /> 
     </Tabs>
   );
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   fabButton: {
     width: 58,
     height: 58,
@@ -79,7 +110,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#6b8e23',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: -25, // Efeito saltado para fora da barra
+    marginTop: -25,
     elevation: 8,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },

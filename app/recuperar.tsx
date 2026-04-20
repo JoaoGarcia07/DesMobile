@@ -2,34 +2,24 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ImageBackground, Alert, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import api from '../api'; // Importa sua configuração centralizada
 
 const { width } = Dimensions.get('window');
 
 export default function RecuperarSenhaScreen() {
-  const [email, setEmail] = useState('');
+  const [usuario, setUsuario] = useState('');
   const router = useRouter();
 
   const handleRecuperar = async () => {
-    if (!email) {
-      Alert.alert("Aviso", "Por favor, digite seu e-mail.");
+    if (!usuario) {
+      Alert.alert("Aviso", "Por favor, digite seu usuário.");
       return;
     }
 
-    try {
-      // Faz a chamada para a nova rota que criamos no server.js
-      const response = await api.post('/recuperar-senha', { 
-        email: email.trim().toLowerCase() 
-      });
-
-      if (response.data.success) {
-        Alert.alert("Sucesso", "Se este e-mail estiver cadastrado, você receberá as instruções em breve.");
-        router.back(); // Volta para a tela de Login
-      }
-    } catch (error) {
-      console.error("Erro na recuperação:", error);
-      Alert.alert("Erro", "Não foi possível conectar ao servidor.");
-    }
+    Alert.alert(
+      "Recuperação de senha",
+      "A redefinição de senha ainda é feita pelo administrador no DesbravadoresTeste. Solicite a alteração no painel web."
+    );
+    router.back();
   };
 
   return (
@@ -38,7 +28,6 @@ export default function RecuperarSenhaScreen() {
       style={styles.background}
     >
       <View style={styles.overlay}>
-        {/* BOTÃO VOLTAR */}
         <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
           <Ionicons name="arrow-back" size={28} color="white" />
         </TouchableOpacity>
@@ -53,23 +42,22 @@ export default function RecuperarSenhaScreen() {
 
         <View style={styles.card}>
           <Text style={styles.infoText}>
-            Informe seu e-mail abaixo. Enviaremos um link para você redefinir sua senha com segurança.
+            Informe seu usuário abaixo. A redefinição ainda é feita pelo administrador do sistema web.
           </Text>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.icon} />
+            <Ionicons name="person-outline" size={20} color="#666" style={styles.icon} />
             <TextInput 
-              placeholder="exemplo@email.com" 
+              placeholder="usuario" 
               style={styles.input}
-              value={email}
-              onChangeText={setEmail}
+              value={usuario}
+              onChangeText={setUsuario}
               autoCapitalize="none"
-              keyboardType="email-address"
             />
           </View>
 
           <TouchableOpacity style={styles.button} onPress={handleRecuperar}>
-            <Text style={styles.buttonText}>ENVIAR INSTRUÇÕES</Text>
+            <Text style={styles.buttonText}>ENTENDI</Text>
           </TouchableOpacity>
         </View>
       </View>

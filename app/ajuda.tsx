@@ -55,7 +55,7 @@ export default function AjudaScreen() {
           <FaqItem 
             theme={theme} 
             pergunta="Erro de conexão com o servidor?" 
-            resposta="Verifique se o servidor está rodando no IP 192.168.100.85 e se você está na mesma rede Wi-Fi." 
+            resposta="Verifique se a API do DesbravadoresTeste está rodando na máquina host e se o celular está na mesma rede Wi-Fi." 
           />
 
           <Text style={[styles.sectionTitle, { color: theme.text, marginTop: 30 }]}>Ainda com dúvidas?</Text>

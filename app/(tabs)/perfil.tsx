@@ -1,15 +1,23 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View, Text, StyleSheet, Image, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient'; 
-import { useTheme } from '../_layout'; 
-
-const { width } = Dimensions.get('window');
+import { useAppSync, useTheme } from '../_layout'; 
+import api, { clearSession, isUnauthorizedError, resolveAssetUrl } from '../../api';
 
 export default function PerfilScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
+  const { refreshVersion, isRefreshing, triggerRefresh } = useAppSync();
+  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [stats, setStats] = useState({
+    specialties: 0,
+    requirements: 0,
+    groupName: 'Sem unidade',
+  });
 
   const theme = {
     bg: isDarkMode ? '#0F172A' : '#F8FAFC',
@@ -19,92 +27,177 @@ export default function PerfilScreen() {
     accent: '#6b8e23'
   };
 
+  useEffect(() => {
+    let active = true;
+
+    const loadProfile = async () => {
+      try {
+        const [profileResponse, requirementResponse, specialtyResponse, groupResponse] = await Promise.all([
+          api.get('/api/profile/me'),
+          api.get('/api/profile/me/requirements-progress'),
+          api.get('/api/profile/me/specialties-progress'),
+          api.get('/api/groups/me').catch((error) => {
+            if (error?.response?.status === 404) {
+              return { data: null };
+            }
+
+            throw error;
+          }),
+        ]);
+
+        if (!active) {
+          return;
+        }
+
+        const payload = profileResponse.data;
+        setProfile(payload);
+        setAvatarUrl(await resolveAssetUrl(payload?.avatar));
+        setStats({
+          specialties: specialtyResponse.data?.completedSpecialties || 0,
+          requirements: requirementResponse.data?.completedRequirements || 0,
+          groupName: groupResponse.data?.group?.name || payload?.group?.name || 'Sem unidade',
+        });
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          await clearSession();
+          router.replace('/');
+          return;
+        }
+
+        console.log('Erro ao carregar perfil:', error);
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [router, refreshVersion]);
+
+  const handleLogout = async () => {
+    await clearSession();
+    router.replace('/');
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.loaderArea, { backgroundColor: theme.bg }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
+  }
+
+  const fullName = [profile?.name, profile?.surname].filter(Boolean).join(' ') || profile?.username || 'Desbravador';
+  const achievements = profile?.achievements?.length || 0;
+  const xp = profile?.xp || 0;
+  const level = profile?.level || 1;
+  const progressPercent = Math.min(100, Math.max(12, ((xp % 1000) / 1000) * 100 || 12));
+  const avatarSource = avatarUrl
+    ? { uri: avatarUrl }
+    : { uri: `https://avatar.iran.liara.run/public/boy?username=${encodeURIComponent(profile?.username || 'desbravador')}` };
+
   return (
-    <ScrollView style={[styles.container, { backgroundColor: theme.bg }]} showsVerticalScrollIndicator={false}>
-      
-      {/* HEADER: STATUS DE JOGADOR COM XP DETALHADO */}
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.bg }]}
+      showsVerticalScrollIndicator={false}
+      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={triggerRefresh} tintColor={theme.accent} />}
+    >
       <LinearGradient colors={['#6b8e23', '#0F172A']} style={styles.headerGradient}>
         <View style={styles.avatarWrapper}>
           <Image 
-            source={{ uri: 'https://avatar.iran.liara.run/public/boy?username=Joao' }} 
+            source={avatarSource} 
             style={styles.profileImage} 
           />
           <LinearGradient colors={['#FFD700', '#FFA500']} style={styles.levelBadge}>
-            <Text style={styles.levelText}>LVL 5</Text>
+            <Text style={styles.levelText}>LVL {level}</Text>
           </LinearGradient>
         </View>
         
-        <Text style={styles.userName}>João Garcia</Text>
+        <Text style={styles.userName}>{fullName}</Text>
+        <Text style={styles.userRole}>{profile?.role || 'DESBRAVADOR'} • {stats.groupName}</Text>
         
         <View style={styles.xpContainer}>
           <View style={styles.xpBarBackground}>
-            <View style={[styles.xpBarFill, { width: '75%' }]} />
+            <View style={[styles.xpBarFill, { width: `${progressPercent}%` }]} />
           </View>
           <View style={styles.xpInfo}>
-            <Text style={styles.xpText}>750 XP</Text>
-            <Text style={styles.xpText}>1000 XP</Text>
+            <Text style={styles.xpText}>{xp} XP</Text>
+            <Text style={styles.xpText}>Próximo nível</Text>
           </View>
         </View>
       </LinearGradient>
 
       <View style={styles.content}>
-        
-        {/* STATS DE ATRIBUTOS ESTILO DASHBOARD */}
         <View style={[styles.statsRow, { backgroundColor: theme.card }]}>
-          <StatBox value="12" label="Especialid." theme={theme} />
+          <StatBox value={String(stats.specialties)} label="Especialid." theme={theme} />
           <View style={styles.divider} />
-          <StatBox value="4" label="Classes" theme={theme} />
+          <StatBox value={String(stats.requirements)} label="Req. Feitos" theme={theme} />
           <View style={styles.divider} />
-          <StatBox value="A+" label="Sangue" theme={theme} />
+          <StatBox value={String(achievements)} label="Medalhas" theme={theme} />
         </View>
 
-        {/* SEÇÃO DE MEDALHAS PROFISSIONAIS COM GRADIENTE METÁLICO */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Medalhas de Conquista</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgeScroll}>
-          <ProfessionalBadge icon="flame" colors={['#FF416C', '#FF4B2B']} label="Fogo do Conselho" />
-          <ProfessionalBadge icon="leaf" colors={['#00b09b', '#96c93d']} label="Ecovida" />
-          <ProfessionalBadge icon="star" colors={['#f8ad42', '#d47e00']} label="Líder" />
-          <ProfessionalBadge icon="shield-checkmark" colors={['#4facfe', '#00f2fe']} label="Sentinela" />
-          <ProfessionalBadge icon="ribbon" colors={['#667eea', '#764ba2']} label="Mestre" />
-        </ScrollView>
+        {achievements === 0 ? (
+          <View style={[styles.emptyBadgeState, { backgroundColor: theme.card }]}>
+            <Text style={{ color: theme.subText }}>Nenhuma medalha liberada ainda.</Text>
+          </View>
+        ) : (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.badgeScroll}>
+            {profile?.achievements?.map((achievement: any, index: number) => (
+              <ProfessionalBadge
+                key={achievement.id || index}
+                icon="ribbon"
+                colors={badgeColors[index % badgeColors.length]}
+                label={achievement.name || `Medalha ${index + 1}`}
+              />
+            ))}
+          </ScrollView>
+        )}
 
-        {/* SEÇÃO DE MISSÕES COM DESCRIÇÃO E PROGRESSO */}
         <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Missões da Jornada</Text>
-            <Text style={{ color: theme.accent, fontWeight: 'bold' }}>Ver todas</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 0 }]}>Resumo da Jornada</Text>
+            <Text style={{ color: theme.accent, fontWeight: 'bold' }}>{xp} XP</Text>
         </View>
         
         <MissionItem 
-            title="Leitura da Bíblia" 
-            desc="Leia 5 capítulos de Gênesis" 
-            progress={0.8} 
+            title="Especialidades concluídas" 
+            desc={`${stats.specialties} especialidade(s) já foram fechadas.`} 
+            progress={Math.min(1, stats.specialties / 10 || 0)} 
             icon="book" 
             theme={theme} 
+            completed={stats.specialties > 0}
         />
         <MissionItem 
-            title="Especialidade de Nós" 
-            desc="Complete os 10 nós básicos" 
-            progress={0.4} 
+            title="Requisitos concluídos" 
+            desc={`${stats.requirements} requisito(s) confirmados pelo sistema.`} 
+            progress={Math.min(1, stats.requirements / 10 || 0)} 
             icon="infinite" 
             theme={theme} 
+            completed={stats.requirements > 0}
         />
         <MissionItem 
-            title="Caminhada Noturna" 
-            desc="Participe do percurso de 5km" 
-            progress={1} 
+            title="Medalhas desbloqueadas" 
+            desc={`${achievements} conquista(s) registradas no perfil.`} 
+            progress={achievements > 0 ? 1 : 0.1} 
             icon="walk" 
             theme={theme} 
-            completed 
+            completed={achievements > 0}
         />
         <MissionItem 
-            title="Uniforme Impecável" 
-            desc="Mantenha o lenço alinhado" 
-            progress={0.1} 
+            title="Cargo na unidade" 
+            desc={profile?.unitRole || 'Sem cargo definido no momento.'} 
+            progress={profile?.unitRole ? 1 : 0.1} 
             icon="shirt" 
-            theme={theme} 
+            theme={theme}
+            completed={Boolean(profile?.unitRole)}
         />
 
-        <TouchableOpacity style={styles.logoutBtn}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Ionicons name="log-out-outline" size={20} color="#EF4444" />
           <Text style={styles.logoutText}>Encerrar Sessão</Text>
         </TouchableOpacity>
@@ -113,7 +206,13 @@ export default function PerfilScreen() {
   );
 }
 
-// COMPONENTES AUXILIARES
+const badgeColors = [
+  ['#FF416C', '#FF4B2B'],
+  ['#00b09b', '#96c93d'],
+  ['#f8ad42', '#d47e00'],
+  ['#4facfe', '#00f2fe'],
+  ['#667eea', '#764ba2'],
+];
 
 function StatBox({ value, label, theme }: any) {
     return (
@@ -178,6 +277,7 @@ const styles = StyleSheet.create({
   },
   levelText: { fontSize: 12, fontWeight: '900', color: '#000' },
   userName: { color: 'white', fontSize: 28, fontWeight: 'bold', marginTop: 15 },
+  userRole: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '700', marginTop: 6 },
   xpContainer: { width: '75%', marginTop: 20 },
   xpBarBackground: { 
     width: '100%', 
@@ -214,6 +314,7 @@ const styles = StyleSheet.create({
     marginBottom: 15 
   },
   badgeScroll: { paddingBottom: 10 },
+  emptyBadgeState: { padding: 18, borderRadius: 20, marginBottom: 10 },
   badgeWrapper: { alignItems: 'center', marginRight: 18, width: 80 },
   badgeCircle: { width: 70, height: 70, borderRadius: 35, padding: 3, elevation: 8 },
   badgeInnerCircle: { 
@@ -246,5 +347,6 @@ const styles = StyleSheet.create({
     marginTop: 35, 
     paddingBottom: 30 
   },
-  logoutText: { color: '#EF4444', fontWeight: 'bold', marginLeft: 10, fontSize: 16 }
+  logoutText: { color: '#EF4444', fontWeight: 'bold', marginLeft: 10, fontSize: 16 },
+  loaderArea: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });

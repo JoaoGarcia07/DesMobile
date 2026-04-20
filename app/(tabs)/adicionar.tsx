@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, Dimensions } from 'react-native';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
-import axios from 'axios';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../_layout'; // Caminho corrigido para subir um nível
-
-const { width } = Dimensions.get('window');
+import { useTheme } from '../_layout';
+import api, { clearSession, isUnauthorizedError } from '../../api';
 
 export default function AdicionarScreen() {
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
   const [data, setData] = useState('');
   const [hora, setHora] = useState('');
+  const [saving, setSaving] = useState(false);
   const router = useRouter();
   const { isDarkMode } = useTheme();
 
@@ -32,30 +31,37 @@ export default function AdicionarScreen() {
     }
 
     try {
-      // Endpoint configurado conforme o seu servidor local
-      const response = await axios.post('http://192.168.100.90:3000/agenda', {
-        titulo,
-        descricao,
-        data,
-        hora
+      setSaving(true);
+
+      await api.post('/api/tasks', {
+        title: titulo,
+        description: descricao,
+        date: data,
+        time: hora,
       });
 
-      if (response.data.id) {
-        Alert.alert("Sucesso", "Missão cadastrada no QG!");
-        setTitulo('');
-        setDescricao('');
-        setData('');
-        setHora('');
-        router.push('/agenda');
+      Alert.alert("Sucesso", "Missão cadastrada no sistema!");
+      setTitulo('');
+      setDescricao('');
+      setData('');
+      setHora('');
+      router.push('/agenda');
+    } catch (error: any) {
+      if (isUnauthorizedError(error)) {
+        await clearSession();
+        router.replace('/');
+        return;
       }
-    } catch (error) {
-      Alert.alert("Erro", "Falha na comunicação com o QG.");
+
+      const message = error?.response?.data || "Falha na comunicação com o backend.";
+      Alert.alert("Erro", typeof message === 'string' ? message : "Falha na comunicação com o backend.");
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Header Premium - Título elevado para otimizar espaço */}
       <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color="white" />
@@ -86,7 +92,7 @@ export default function AdicionarScreen() {
             </View>
           </View>
 
-          <TouchableOpacity style={styles.button} onPress={salvarEvento} activeOpacity={0.8}>
+          <TouchableOpacity style={[styles.button, saving && { opacity: 0.8 }]} onPress={salvarEvento} activeOpacity={0.8} disabled={saving}>
             <LinearGradient 
               colors={['#6b8e23', '#4a6318']} 
               start={{ x: 0, y: 0 }} 
@@ -94,7 +100,7 @@ export default function AdicionarScreen() {
               style={styles.gradientButton}
             >
               <Ionicons name="add-circle-outline" size={24} color="white" />
-              <Text style={styles.buttonText}>Cadastrar Missão</Text>
+              <Text style={styles.buttonText}>{saving ? 'Salvando...' : 'Cadastrar Missão'}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -114,7 +120,7 @@ function InputLabel({ theme, label, value, onChange, icon, placeholder, multilin
           value={value}
           onChangeText={onChange}
           placeholder={placeholder}
-          placeholderTextColor={theme.subText + '70'}
+          placeholderTextColor={`${theme.subText}70`}
           multiline={multiline}
         />
       </View>

@@ -1,19 +1,22 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert, Dimensions } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from './_layout'; // Caminho corrigido para subir um nível
-
-const { width } = Dimensions.get('window');
+import { useTheme } from './_layout';
+import api, { clearSession, isUnauthorizedError, resolveAssetUrl } from '../api';
 
 export default function EditarPerfilScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
   
-  const [nome, setNome] = useState("João Garcia");
-  const [clube, setClube] = useState("Clube de Desbravadores");
-  const [unidade, setUnidade] = useState("Águia");
+  const [nome, setNome] = useState("");
+  const [sobrenome, setSobrenome] = useState("");
+  const [usuario, setUsuario] = useState("");
+  const [unidade, setUnidade] = useState("Sem unidade");
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const theme = {
     bg: isDarkMode ? '#0F172A' : '#F8FAFC',
@@ -24,26 +27,91 @@ export default function EditarPerfilScreen() {
     accent: '#6b8e23',
   };
 
+  useEffect(() => {
+    let active = true;
+
+    const loadProfile = async () => {
+      try {
+        const response = await api.get('/api/profile/me');
+
+        if (!active) {
+          return;
+        }
+
+        const profile = response.data;
+        setNome(profile?.name || '');
+        setSobrenome(profile?.surname || '');
+        setUsuario(profile?.username || '');
+        setUnidade(profile?.group?.name || 'Sem unidade');
+        setAvatarUrl(await resolveAssetUrl(profile?.avatar));
+      } catch (error) {
+        if (isUnauthorizedError(error)) {
+          await clearSession();
+          router.replace('/');
+          return;
+        }
+
+        Alert.alert("Erro", "Não foi possível carregar o perfil.");
+      } finally {
+        if (active) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
   const handleSalvar = async () => {
     try {
-      // Simulação de salvamento no banco via IP local
+      setSaving(true);
+
+      const formData = new FormData();
+      formData.append('name', nome.trim());
+      formData.append('surname', sobrenome.trim());
+
+      await api.put('/api/profile/me', formData);
+
       Alert.alert("Sucesso", "Perfil atualizado com sucesso!");
       router.back();
     } catch (error) {
+      if (isUnauthorizedError(error)) {
+        await clearSession();
+        router.replace('/');
+        return;
+      }
+
       Alert.alert("Erro", "Não foi possível salvar as alterações.");
+    } finally {
+      setSaving(false);
     }
   };
 
+  const avatarSource = avatarUrl
+    ? { uri: avatarUrl }
+    : { uri: `https://avatar.iran.liara.run/public/boy?username=${encodeURIComponent(usuario || 'desbravador')}` };
+
+  if (loading) {
+    return (
+      <View style={[styles.loaderArea, { backgroundColor: theme.bg }]}>
+        <ActivityIndicator size="large" color={theme.accent} />
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: theme.bg }]}>
-      {/* Header Premium - Título no topo */}
       <LinearGradient colors={[theme.accent, '#0F172A']} style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="close" size={26} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>EDITAR PERFIL</Text>
-        <TouchableOpacity onPress={handleSalvar} style={styles.saveBtn}>
-          <Text style={styles.saveText}>Salvar</Text>
+        <TouchableOpacity onPress={handleSalvar} style={[styles.saveBtn, saving && { opacity: 0.7 }]} disabled={saving}>
+          <Text style={styles.saveText}>{saving ? 'Salvando' : 'Salvar'}</Text>
         </TouchableOpacity>
       </LinearGradient>
 
@@ -51,7 +119,7 @@ export default function EditarPerfilScreen() {
         <View style={styles.avatarSection}>
           <View style={styles.imageWrapper}>
             <Image 
-              source={{ uri: "https://avatar.iran.liara.run/public/boy" }} 
+              source={avatarSource} 
               style={styles.avatar} 
             />
             <TouchableOpacity style={styles.editBadge}>
@@ -59,19 +127,20 @@ export default function EditarPerfilScreen() {
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={styles.changePhotoButton}>
-            <Text style={[styles.changePhotoText, { color: theme.accent }]}>Alterar foto de perfil</Text>
+            <Text style={[styles.changePhotoText, { color: theme.accent }]}>Alterar foto de perfil no sistema web</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.form}>
-          <InputLabel theme={theme} label="Nome Completo" value={nome} onChange={setNome} icon="person-outline" />
-          <InputLabel theme={theme} label="Clube" value={clube} onChange={setClube} icon="flag-outline" />
-          <InputLabel theme={theme} label="Unidade" value={unidade} onChange={setUnidade} icon="ribbon-outline" />
+          <InputLabel theme={theme} label="Nome" value={nome} onChange={setNome} icon="person-outline" />
+          <InputLabel theme={theme} label="Sobrenome" value={sobrenome} onChange={setSobrenome} icon="person-outline" />
+          <InputLabel theme={theme} label="Usuário" value={usuario} onChange={() => {}} icon="at-outline" editable={false} />
+          <InputLabel theme={theme} label="Unidade" value={unidade} onChange={() => {}} icon="ribbon-outline" editable={false} />
           
           <View style={[styles.infoBox, { backgroundColor: theme.card }]}>
             <Ionicons name="information-circle-outline" size={22} color={theme.accent} />
             <Text style={[styles.infoText, { color: theme.subText }]}>
-              Informações de Clube e Unidade são validadas pela secretaria do QG.
+              Usuário, avatar e unidade continuam centralizados no DesbravadoresTeste. Aqui você altera apenas seu nome público.
             </Text>
           </View>
         </View>
@@ -80,7 +149,7 @@ export default function EditarPerfilScreen() {
   );
 }
 
-function InputLabel({ theme, label, value, onChange, icon }: any) {
+function InputLabel({ theme, label, value, onChange, icon, editable = true }: any) {
   return (
     <View style={styles.inputGroup}>
       <Text style={[styles.label, { color: theme.subText }]}>{label}</Text>
@@ -91,6 +160,7 @@ function InputLabel({ theme, label, value, onChange, icon }: any) {
           value={value}
           onChangeText={onChange}
           placeholderTextColor={theme.subText}
+          editable={editable}
         />
       </View>
     </View>
@@ -127,5 +197,6 @@ const styles = StyleSheet.create({
   inputIcon: { marginRight: 10 },
   input: { flex: 1, paddingVertical: 15, fontSize: 16, fontWeight: '500' },
   infoBox: { flexDirection: 'row', alignItems: 'center', marginTop: 10, padding: 15, borderRadius: 20, elevation: 2 },
-  infoText: { marginLeft: 12, fontSize: 13, flex: 1, lineHeight: 18 }
+  infoText: { marginLeft: 12, fontSize: 13, flex: 1, lineHeight: 18 },
+  loaderArea: { flex: 1, justifyContent: 'center', alignItems: 'center' }
 });

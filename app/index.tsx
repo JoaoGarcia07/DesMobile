@@ -1,37 +1,95 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
-import { Alert, Dimensions, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import api from "../api"; // IP .85
+import React, { useEffect, useState } from "react";
+import { ActivityIndicator, Alert, Dimensions, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import api, { clearSession, getCachedApiBaseUrl, resolveApiBaseUrl, restoreSession, setAuthToken } from "../api";
 
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [senha, setSenha] = useState("");
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const router = useRouter();
 
+  useEffect(() => {
+    let active = true;
+
+    const bootstrapSession = async () => {
+      try {
+        const token = await restoreSession();
+
+        if (token) {
+          await api.get("/api/profile/me");
+
+          if (active) {
+            router.replace("/(tabs)");
+            return;
+          }
+        }
+      } catch {
+        await clearSession();
+      } finally {
+        if (active) {
+          setCheckingSession(false);
+        }
+      }
+    };
+
+    bootstrapSession();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
   const handleLogin = async () => {
-    if (!email || !senha) {
+    if (!identifier || !senha) {
       Alert.alert("Aviso", "Por favor, preencha todos os campos.");
       return;
     }
 
     try {
-      const response = await api.post("/login", {
-        email: email.trim().toLowerCase(),
-        senha: senha.trim(),
+      setSubmitting(true);
+      await resolveApiBaseUrl(true);
+
+      const response = await api.post("/auth/login", {
+        username: identifier.trim(),
+        password: senha,
       });
 
-      if (response.data.auth) {
-        // ENTRA NAS ABAS SUBSTITUINDO O LOGIN
-        router.replace("/(tabs)"); 
+      if (!response.data?.token) {
+        throw new Error("Resposta de autenticação inválida.");
       }
-    } catch (error) {
+
+      await setAuthToken(response.data.token);
+      router.replace("/(tabs)");
+    } catch (error: any) {
       console.error("Erro no login:", error);
-      Alert.alert("Erro de Conexão", "Servidor fora do ar no IP 192.168.100.85.");
+      await clearSession();
+
+      if (error?.response?.status === 401) {
+        Alert.alert("Acesso negado", "Usuário ou senha inválidos.");
+      } else {
+        const apiHost = getCachedApiBaseUrl() || "http://<host>:8080";
+        Alert.alert(
+          "Erro de conexão",
+          `Não foi possível localizar o backend do DesbravadoresTeste em ${apiHost}. Inicie a API web na máquina host e tente novamente.`
+        );
+      }
+    } finally {
+      setSubmitting(false);
     }
   };
+
+  if (checkingSession) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#6b8e23" />
+      </View>
+    );
+  }
 
   return (
     <ImageBackground
@@ -49,12 +107,12 @@ export default function LoginScreen() {
 
         <View style={styles.loginCard}>
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#666" style={styles.inputIcon} />
+            <Ionicons name="person-outline" size={20} color="#666" style={styles.inputIcon} />
             <TextInput
-              placeholder="joao@teste.com"
+              placeholder="usuario"
               style={styles.input}
-              onChangeText={setEmail}
-              value={email}
+              onChangeText={setIdentifier}
+              value={identifier}
               autoCapitalize="none"
             />
           </View>
@@ -62,7 +120,7 @@ export default function LoginScreen() {
           <View style={styles.inputContainer}>
             <Ionicons name="lock-closed-outline" size={20} color="#666" style={styles.inputIcon} />
             <TextInput
-              placeholder="•••"
+              placeholder="••••••••"
               style={styles.input}
               secureTextEntry
               onChangeText={setSenha}
@@ -74,16 +132,24 @@ export default function LoginScreen() {
             <Text style={styles.forgotText}>Esqueceu a senha?</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.button} onPress={handleLogin}>
-            <Text style={styles.buttonText}>ENTRAR</Text>
-            <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 10 }} />
+          <TouchableOpacity style={[styles.button, submitting && styles.buttonDisabled]} onPress={handleLogin} disabled={submitting}>
+            {submitting ? (
+              <ActivityIndicator size="small" color="white" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>ENTRAR</Text>
+                <Ionicons name="arrow-forward" size={20} color="white" style={{ marginLeft: 10 }} />
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.registerLink} onPress={() => router.push("/cadastro")}>
-          <Text style={styles.registerText}>
-            Não tem uma conta? <Text style={styles.boldText}>Cadastre-se</Text>
-          </Text>
+        <Text style={styles.registerText}>
+          O cadastro do aluno é feito no <Text style={styles.boldText}>DesbravadoresTeste</Text> pelo administrador.
+        </Text>
+
+        <TouchableOpacity style={styles.helperButton} onPress={() => router.push("/cadastro")}>
+          <Text style={styles.helperText}>Como cadastrar um novo usuário</Text>
         </TouchableOpacity>
       </View>
     </ImageBackground>
@@ -91,6 +157,7 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F8FAFC" },
   background: { flex: 1, width: "100%", height: "100%" },
   overlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 20 },
   header: { alignItems: "center", marginBottom: 40 },
@@ -104,8 +171,10 @@ const styles = StyleSheet.create({
   forgotPass: { alignSelf: "flex-end", marginBottom: 20 },
   forgotText: { color: "#666", fontSize: 14 },
   button: { backgroundColor: "#6b8e23", flexDirection: "row", padding: 18, borderRadius: 15, alignItems: "center", justifyContent: "center", elevation: 5 },
+  buttonDisabled: { opacity: 0.8 },
   buttonText: { color: "white", fontWeight: "bold", fontSize: 18 },
-  registerLink: { marginTop: 30 },
-  registerText: { color: "white", fontSize: 15 },
+  registerText: { color: "white", fontSize: 15, marginTop: 30, textAlign: "center" },
   boldText: { fontWeight: "bold", textDecorationLine: "underline" },
+  helperButton: { marginTop: 10 },
+  helperText: { color: "#E2E8F0", fontSize: 14, textDecorationLine: "underline" },
 });

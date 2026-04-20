@@ -61,7 +61,7 @@ export default function TermosScreen() {
           <TermoTopico 
             theme={theme} 
             titulo="4. Privacidade de Dados" 
-            texto="A coleta de dados (nome, unidade e progresso) serve para a gestão do clube e funciona via IP local (192.168.100.85)." 
+            texto="A coleta de dados (nome, unidade e progresso) serve para a gestão do clube e é sincronizada com o backend do DesbravadoresTeste na rede local." 
           />
         </View>
 

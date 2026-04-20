@@ -6,10 +6,18 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState, createContext, useContext } from 'react';
 import { useColorScheme as useDeviceScheme } from 'react-native';
 import 'react-native-reanimated';
+import { resolveApiBaseUrl } from '../api';
 
 // Contexto para o Modo Escuro Manual - ESSENCIAL PARA AS OUTRAS TELAS
 const ThemeContext = createContext({ isDarkMode: false, toggleTheme: () => {} });
 export const useTheme = () => useContext(ThemeContext);
+
+const SyncContext = createContext({
+  refreshVersion: 0,
+  isRefreshing: false,
+  triggerRefresh: async () => {},
+});
+export const useAppSync = () => useContext(SyncContext);
 
 export { ErrorBoundary } from 'expo-router';
 
@@ -23,8 +31,26 @@ export default function RootLayout() {
 
   const deviceScheme = useDeviceScheme();
   const [isDarkMode, setIsDarkMode] = useState(deviceScheme === 'dark');
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+  const triggerRefresh = async () => {
+    if (isRefreshing) {
+      return;
+    }
+
+    setIsRefreshing(true);
+
+    try {
+      await resolveApiBaseUrl(true);
+    } catch {}
+    finally {
+      setRefreshVersion((value) => value + 1);
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
     if (error) throw error;
@@ -37,8 +63,9 @@ export default function RootLayout() {
   if (!loaded) return null;
 
   return (
-    <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
-      <NavProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
+    <SyncContext.Provider value={{ refreshVersion, isRefreshing, triggerRefresh }}>
+      <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+        <NavProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           {/* Garante que a navegação comece pela index ou pelas abas */}
           <Stack.Screen name="index" />
@@ -48,8 +75,9 @@ export default function RootLayout() {
           <Stack.Screen name="recuperar" />
           <Stack.Screen name="sobre" />
           <Stack.Screen name="termos" />
-        </Stack>
-      </NavProvider>
-    </ThemeContext.Provider>
+          </Stack>
+        </NavProvider>
+      </ThemeContext.Provider>
+    </SyncContext.Provider>
   );
 }
