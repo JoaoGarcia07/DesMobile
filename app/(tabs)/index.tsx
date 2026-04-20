@@ -17,22 +17,51 @@ import { LinearGradient } from 'expo-linear-gradient';
 import api, { clearSession, isUnauthorizedError } from '../../api';
 import { useAppSync, useTheme } from '../_layout';
 import { SyncNowButton } from '../../components/SyncNowButton';
+import { getFullName, GroupDetails, ProfilePayload, XpSummary } from '../../lib/desbravadores';
 
 const { width } = Dimensions.get('window');
+
+type TaskItem = {
+  id: number;
+  title?: string | null;
+  date?: string | null;
+  time?: string | null;
+};
+
+type HomeState = {
+  desbravador: string;
+  unidade: string;
+  atividadesPendentes: number;
+  groupTotalXp: number;
+  personalTotalXp: number;
+  level: number;
+  currentXp: number;
+  xpForNextLevel: number;
+  xpToNextLevel: number;
+  membros: number;
+  proximaMissao: TaskItem | null;
+};
+
+const initialState: HomeState = {
+  desbravador: 'Desbravador',
+  unidade: 'Sem unidade atribuida',
+  atividadesPendentes: 0,
+  groupTotalXp: 0,
+  personalTotalXp: 0,
+  level: 1,
+  currentXp: 0,
+  xpForNextLevel: 100,
+  xpToNextLevel: 100,
+  membros: 0,
+  proximaMissao: null,
+};
 
 export default function HomeScreen() {
   const router = useRouter();
   const { isDarkMode } = useTheme();
   const { refreshVersion, triggerRefresh, isRefreshing } = useAppSync();
   const [loading, setLoading] = useState(true);
-  const [info, setInfo] = useState({
-    desbravador: 'Desbravador',
-    unidade: 'Sem unidade atribuida',
-    atividadesPendentes: 0,
-    totalXp: 0,
-    membros: 0,
-    proximaMissao: null as any,
-  });
+  const [info, setInfo] = useState<HomeState>(initialState);
 
   const theme = {
     bg: isDarkMode ? '#0F172A' : '#F8FAFC',
@@ -48,9 +77,10 @@ export default function HomeScreen() {
     const loadHome = async () => {
       try {
         const now = new Date();
-        const [profileResponse, groupResponse, tasksResponse] = await Promise.all([
-          api.get('/api/profile/me'),
-          api.get('/api/groups/me').catch((error) => {
+        const [profileResponse, xpResponse, groupResponse, tasksResponse] = await Promise.all([
+          api.get<ProfilePayload>('/api/profile/me'),
+          api.get<XpSummary>('/api/profile/me/xp'),
+          api.get<GroupDetails>('/api/groups/me').catch((error) => {
             if (error?.response?.status === 404) {
               return { data: null };
             }
@@ -65,15 +95,21 @@ export default function HomeScreen() {
         }
 
         const profile = profileResponse.data || {};
+        const xpSummary = xpResponse.data;
         const groupPayload = groupResponse.data;
         const tasks = tasksResponse.data?.content || [];
-        const fullName = [profile.name, profile.surname].filter(Boolean).join(' ') || profile.username || 'Desbravador';
+        const fullName = getFullName(profile);
 
         setInfo({
           desbravador: fullName,
           unidade: groupPayload?.group?.name || profile.group?.name || 'Sem unidade atribuida',
           atividadesPendentes: tasks.length,
-          totalXp: groupPayload?.totalXp || profile.xp || 0,
+          groupTotalXp: groupPayload?.totalXp || xpSummary?.totalXp || profile.totalXp || 0,
+          personalTotalXp: xpSummary?.totalXp || profile.totalXp || 0,
+          level: xpSummary?.level || profile.level || 1,
+          currentXp: xpSummary?.currentXp || profile.xp || 0,
+          xpForNextLevel: xpSummary?.xpForNextLevel || 100,
+          xpToNextLevel: xpSummary?.xpToNextLevel || 100,
           membros: groupPayload?.members?.length || 0,
           proximaMissao: tasks[0] || null,
         });
@@ -109,6 +145,10 @@ export default function HomeScreen() {
   const nextMissionText = info.proximaMissao
     ? `${info.proximaMissao.date} as ${String(info.proximaMissao.time || '').slice(0, 5)}`
     : 'Nenhuma missao agendada para este mes';
+
+  const levelProgressPercent = info.xpForNextLevel > 0
+    ? Math.min(100, Math.max(6, (info.currentXp / info.xpForNextLevel) * 100))
+    : 0;
 
   return (
     <ScrollView
@@ -149,13 +189,33 @@ export default function HomeScreen() {
               <View>
                 <Text style={styles.mainCardTitle}>{info.unidade}</Text>
                 <Text style={styles.mainCardSub}>
-                  {info.membros} membro(s) • {info.totalXp} XP
+                  {info.membros} membro(s) • {info.groupTotalXp} XP
                 </Text>
               </View>
             </View>
             <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.3)" />
           </LinearGradient>
         </TouchableOpacity>
+
+        <LinearGradient colors={['#6b8e23', '#3c5d12']} style={styles.progressCard}>
+          <View style={styles.progressCardHeader}>
+            <View>
+              <Text style={styles.progressKicker}>SUA TRILHA</Text>
+              <Text style={styles.progressTitle}>Nivel {info.level}</Text>
+            </View>
+            <View style={styles.totalXpBadge}>
+              <Text style={styles.totalXpValue}>{info.personalTotalXp}</Text>
+              <Text style={styles.totalXpLabel}>XP total</Text>
+            </View>
+          </View>
+          <View style={styles.levelBarTrack}>
+            <View style={[styles.levelBarFill, { width: `${levelProgressPercent}%` }]} />
+          </View>
+          <View style={styles.levelMetaRow}>
+            <Text style={styles.levelMetaText}>{info.currentXp} / {info.xpForNextLevel} XP no nivel</Text>
+            <Text style={styles.levelMetaText}>{info.xpToNextLevel} XP restantes</Text>
+          </View>
+        </LinearGradient>
 
         <View style={[styles.missionCard, { backgroundColor: theme.card }]}>
           <View style={{ flex: 1 }}>
@@ -226,12 +286,77 @@ const styles = StyleSheet.create({
     marginRight: 12,
   },
   syncButton: { minWidth: 112 },
-  mainCardShadow: { borderRadius: 25, elevation: 8, marginBottom: 20 },
+  mainCardShadow: { borderRadius: 25, elevation: 8, marginBottom: 16 },
   mainCardGradient: { padding: 20, borderRadius: 25, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   mainCardContent: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   shieldCircle: { width: 60, height: 60, borderRadius: 30, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   mainCardTitle: { color: 'white', fontSize: 20, fontWeight: 'bold' },
-  mainCardSub: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginTop: 4 },
+  mainCardSub: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
+  progressCard: {
+    borderRadius: 24,
+    padding: 18,
+    marginBottom: 18,
+    elevation: 4,
+  },
+  progressCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  progressKicker: {
+    color: 'rgba(255,255,255,0.72)',
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  progressTitle: {
+    color: 'white',
+    fontSize: 22,
+    fontWeight: '800',
+    marginTop: 6,
+  },
+  totalXpBadge: {
+    borderRadius: 18,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    minWidth: 92,
+    alignItems: 'center',
+  },
+  totalXpValue: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  totalXpLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  levelBarTrack: {
+    height: 12,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    overflow: 'hidden',
+  },
+  levelBarFill: {
+    height: '100%',
+    borderRadius: 999,
+    backgroundColor: '#FFD84D',
+  },
+  levelMetaRow: {
+    marginTop: 10,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  levelMetaText: {
+    color: 'rgba(255,255,255,0.82)',
+    fontSize: 11,
+    fontWeight: '700',
+  },
   missionCard: { borderRadius: 22, padding: 18, flexDirection: 'row', alignItems: 'center', marginBottom: 20, elevation: 3 },
   missionLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 1 },
   missionTitle: { fontSize: 17, fontWeight: 'bold', marginTop: 6 },

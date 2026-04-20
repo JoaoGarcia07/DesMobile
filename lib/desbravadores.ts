@@ -13,6 +13,22 @@ export type BasicUser = {
   unitRole?: string | null;
   role?: RoleName | null;
   xp?: number | null;
+  totalXp?: number | null;
+};
+
+export type AchievementItem = {
+  id: number;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+  xpReward?: number | null;
+  rewardType?: string | null;
+};
+
+export type ProfilePayload = BasicUser & {
+  level?: number | null;
+  group?: GroupPayload | null;
+  achievements?: AchievementItem[];
 };
 
 export type GroupPayload = {
@@ -36,6 +52,8 @@ export type RequirementProgressItem = {
   classLevel: string;
   description: string;
   iconName?: string | null;
+  iconImageUrl?: string | null;
+  iconSize?: number | null;
   displayOrder: number;
   completed: boolean;
   completedAt?: string | null;
@@ -58,9 +76,37 @@ export type SpecialtyProgressItem = {
   area: string;
   description: string;
   iconName?: string | null;
+  iconImageUrl?: string | null;
+  iconSize?: number | null;
   accentColor?: string | null;
   status: SpecialtyStatus;
   updatedAt?: string | null;
+};
+
+export type XpHistoryItem = {
+  id: number;
+  amount: number;
+  reason: string;
+  sourceType?: string | null;
+  referenceType?: string | null;
+  referenceId?: number | null;
+  referenceLabel?: string | null;
+  performedBy?: string | null;
+  balanceAfter: number;
+  levelAfter: number;
+  currentLevelXpAfter: number;
+  createdAt?: string | null;
+};
+
+export type XpSummary = {
+  level: number;
+  currentXp: number;
+  totalXp: number;
+  xpForNextLevel: number;
+  xpToNextLevel: number;
+  achievementXp: number;
+  manualXp: number;
+  history: XpHistoryItem[];
 };
 
 export type SpecialtyProgress = {
@@ -305,4 +351,41 @@ export function resolveBackendIconName(rawValue?: string | null, fallback: Ionic
   }
 
   return fallback;
+}
+
+export function formatXpAmount(value?: number | null) {
+  const amount = Number(value) || 0;
+  return `${amount >= 0 ? '+' : ''}${amount} XP`;
+}
+
+export function formatDateTime(value?: string | null) {
+  if (!value) {
+    return 'agora';
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return 'agora';
+  }
+
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(parsed);
+}
+
+export function translateXpSource(sourceType?: string | null) {
+  switch (sourceType) {
+    case 'ACHIEVEMENT_GRANTED':
+      return 'Conquista liberada';
+    case 'ACHIEVEMENT_REVOKED':
+      return 'Conquista revogada';
+    case 'ADMIN_ADJUSTMENT':
+      return 'Ajuste do admin';
+    default:
+      return 'Movimentacao';
+  }
 }
