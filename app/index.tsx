@@ -79,10 +79,10 @@ export default function LoginScreen() {
       if (error?.response?.status === 401) {
         Alert.alert('Acesso negado', 'Usuario ou senha invalidos.');
       } else {
-        const apiHost = getCachedApiBaseUrl() || 'http://<host>:8080';
+        const apiHost = getCachedApiBaseUrl() || 'https://desbravadoresteste.onrender.com';
         Alert.alert(
           'Erro de conexao',
-          `Nao foi possivel localizar o backend do DesbravadoresTeste em ${apiHost}. Inicie a API web na maquina host e tente novamente.`
+          `Nao foi possivel conectar ao backend do DesbravadoresTeste em ${apiHost}. Verifique sua internet e tente novamente.`
         );
       }
     } finally {

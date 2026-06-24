@@ -4,6 +4,7 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 
 const API_PORT = '8080';
+const DEFAULT_RENDER_API_BASE_URL = 'https://desbravadoresteste.onrender.com';
 const REQUEST_TIMEOUT_MS = 8000;
 const PROBE_TIMEOUT_MS = 2500;
 const TOKEN_STORAGE_KEY = 'desmobile.auth.token';
@@ -14,6 +15,14 @@ let cachedBaseUrl = null;
 let sessionHydrated = false;
 let pendingBaseUrlResolution = null;
 const memoryStorage = {};
+
+function normalizeBaseUrl(url) {
+  return String(url || '').trim().replace(/\/+$/, '');
+}
+
+function getConfiguredApiBaseUrl() {
+  return normalizeBaseUrl(process.env.EXPO_PUBLIC_API_URL || DEFAULT_RENDER_API_BASE_URL);
+}
 
 function isWebRuntime() {
   return Platform.OS === 'web';
@@ -189,6 +198,17 @@ export async function hydrateSession() {
 
 export async function resolveApiBaseUrl(forceRefresh = false) {
   await hydrateSession();
+
+  const configuredBaseUrl = getConfiguredApiBaseUrl();
+
+  if (configuredBaseUrl) {
+    if (cachedBaseUrl !== configuredBaseUrl) {
+      cachedBaseUrl = configuredBaseUrl;
+      await writeStoredValue(BASE_URL_STORAGE_KEY, configuredBaseUrl);
+    }
+
+    return configuredBaseUrl;
+  }
 
   if (!forceRefresh && cachedBaseUrl) {
     return cachedBaseUrl;
